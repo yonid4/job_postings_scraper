@@ -1,0 +1,987 @@
+{% extends "base.html" %}
+
+{% block title %}Job Search - AI Job Qualification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Job Search & Analysis</h1>
+                <p class="text-muted mb-0">Analyze job opportunities with AI-powered qualification screening</p>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-primary" onclick="analyzeJobs()">
+                    <i class="fas fa-robot me-1"></i> Analyze Jobs
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Job Search Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Job Search URLs
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Website Selection -->
+                <div class="mb-3">
+                    <label for="website-choice" class="form-label">Choose Job Website</label>
+                    <select class="form-select" id="website-choice" name="website" required>
+                        <option value="">Select a website...</option>
+                        <option value="linkedin" selected>LinkedIn</option>
+                        <!-- Future options: -->
+                        <!-- <option value="indeed">Indeed</option> -->
+                        <!-- <option value="glassdoor">Glassdoor</option> -->
+                    </select>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Currently supporting LinkedIn. More job sites coming soon!
+                    </div>
+                </div>
+
+                <!-- Search Keywords -->
+                <div class="mb-3">
+                    <label for="keywords" class="form-label">Job Title/Keywords *</label>
+                    <input type="text" class="form-control" id="keywords" name="keywords" required
+                           placeholder="e.g., Software Engineer, Data Scientist, Python Developer">
+                    <div class="form-text">
+                        Enter job titles, skills, or keywords you're looking for (required)
+                    </div>
+                </div>
+                
+                <!-- Search Filters -->
+                <div id="filter-form" class="mb-4">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-filter me-2"></i>
+                                Search Filters
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="locations" class="form-label">Locations</label>
+                                    <input type="text" class="form-control" id="locations" name="locations" 
+                                           placeholder="Enter locations separated by commas (e.g., New York, San Francisco, Remote)">
+                                    <div class="form-text">Multiple locations supported</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="distance" class="form-label">Distance from locations</label>
+                                    <select class="form-select" id="distance" name="distance">
+                                        <option value="exact">Exact location only</option>
+                                        <option value="5">Within 5 miles</option>
+                                        <option value="10">Within 10 miles</option>
+                                        <option value="25" selected>Within 25 miles</option>
+                                        <option value="50">Within 50 miles</option>
+                                        <option value="100">Within 100 miles</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Remote Work Options -->
+                            <div class="mb-3">
+                                <label class="form-label">Work Arrangement</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-item"><input type="checkbox" name="remote" value="on-site"> On-Site</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="remote" value="remote"> Remote</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="remote" value="hybrid"> Hybrid</label>
+                                </div>
+                            </div>
+                            
+                            <!-- Experience Level -->
+                            <div class="mb-3">
+                                <label class="form-label">Experience Level</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="entry"> Entry Level</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="associate"> Associate</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="mid"> Mid Level</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="senior"> Senior</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="director"> Director</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="experience" value="executive"> Executive</label>
+                                </div>
+                            </div>
+                            
+                            <!-- Job Type -->
+                            <div class="mb-3">
+                                <label class="form-label">Job Type</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-item"><input type="checkbox" name="job_type" value="full-time"> Full-time</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="job_type" value="part-time"> Part-time</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="job_type" value="contract"> Contract</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="job_type" value="temporary"> Temporary</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="job_type" value="internship"> Internship</label>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_posted" class="form-label">Date Posted</label>
+                                    <select class="form-select" id="date_posted" name="date_posted">
+                                        <option value="any" selected>Any time</option>
+                                        <option value="1">Past 24 hours</option>
+                                        <option value="7">Past week</option>
+                                        <option value="30">Past month</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="qualification_threshold" class="form-label">Qualification Threshold</label>
+                                    <div class="threshold-input">
+                                        <input type="range" class="form-range" id="qualification_threshold" name="qualification_threshold" 
+                                               min="0" max="100" value="70" step="5">
+                                        <span class="threshold-value">70%</span>
+                                    </div>
+                                    <div class="form-text">Only show jobs with qualification score above this threshold</div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <label for="filter_keywords" class="form-label">Additional Keywords</label>
+                                    <input type="text" class="form-control" id="filter_keywords" 
+                                           placeholder="e.g., python, react, aws, docker">
+                                    <div class="form-text">Add keywords to narrow down your search</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyFilters()">
+                                    <i class="fas fa-magic me-1"></i> Apply Filters to URLs
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearFilters()">
+                                    <i class="fas fa-times me-1"></i> Clear Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="limit_jobs" checked>
+                            <label class="form-check-label" for="limit_jobs">
+                                Limit to first 10 jobs per search
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="save_to_sheets" checked>
+                            <label class="form-check-label" for="save_to_sheets">
+                                Save qualified jobs to Google Sheets
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results -->
+        <div id="analysis-results" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Analysis Results
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-primary" onclick="saveAllJobsFromSearch()">
+                                <i class="fas fa-save me-1"></i> Save ALL Jobs to Sheets (<span id="total-jobs-count">0</span> jobs)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="results-summary" class="mb-4"></div>
+                    <div id="jobs-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Instructions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    How to Use
+                </h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">Select a job website (currently LinkedIn)</li>
+                    <li class="mb-2">Enter your job title or keywords</li>
+                    <li class="mb-2">Configure your search filters (optional)</li>
+                    <li class="mb-2">Set your qualification threshold</li>
+                    <li class="mb-2">Click "Analyze Jobs"</li>
+                </ol>
+                <div class="mt-3 p-2 bg-light rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-star me-1"></i>
+                        <strong>Pro Tip:</strong> Use the filters to narrow down your search by location, experience level, job type, and work arrangement. The qualification threshold determines which jobs are shown in your results.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Examples -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Search Examples
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Job Title Examples</h6>
+                    <small class="text-muted">
+                        Try these popular job titles:
+                    </small>
+                    <div class="mt-2">
+                        <code class="small">Software Engineer</code>
+                    </div>
+                    <div class="mt-1">
+                        <code class="small">Data Scientist</code>
+                    </div>
+                    <div class="mt-1">
+                        <code class="small">Product Manager</code>
+                    </div>
+                    <div class="mt-1">
+                        <code class="small">Python Developer</code>
+                    </div>
+                </div>
+                <div>
+                    <h6>Skill Keywords</h6>
+                    <small class="text-muted">
+                        Add specific skills:
+                    </small>
+                    <div class="mt-2">
+                        <code class="small">React, AWS, Docker</code>
+                    </div>
+                    <div class="mt-1">
+                        <code class="small">Machine Learning, Python</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Status -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Analysis Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="analysis-status">
+                    <p class="text-muted mb-0">Ready to analyze jobs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Detail Modal -->
+<div class="modal fade" id="jobModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jobModalTitle">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobModalBody">
+                <!-- Job details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-info btn-sm" onclick="debugJobUrl()">
+                    <i class="fas fa-bug me-1"></i> Debug URL
+                </button>
+                <a href="#" class="btn btn-primary" id="jobModalLink" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i> View Job
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let analysisResults = [];
+
+function analyzeJobs() {
+    const website = $('#website-choice').val();
+    const keywords = $('#keywords').val().trim();
+    const location = $('#locations').val().trim();
+    const datePosted = $('#date_posted').val();
+    
+    if (!website) {
+        showAlert('Please select a job website', 'warning');
+        return;
+    }
+    
+    if (!keywords) {
+        showAlert('Please enter job keywords', 'warning');
+        return;
+    }
+    
+    if (!location) {
+        showAlert('Please enter a location', 'warning');
+        return;
+    }
+
+    const analyzeBtn = $('button[onclick="analyzeJobs()"]');
+    const statusDiv = $('#analysis-status');
+    
+    // Show loading state
+    analyzeBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Analyzing...');
+    
+    // Determine which search method to use based on website
+    if (website === 'linkedin') {
+        // Use new LinkedIn search with date filtering
+        statusDiv.html('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Searching LinkedIn with date filtering...</div>');
+        
+        // Log the search parameters
+        console.log('=== LINKEDIN SEARCH STARTED ===');
+        console.log('Search Parameters:', {
+            website: website,
+            keywords: keywords,
+            location: location,
+            date_posted: datePosted,
+            qualification_threshold: $('#qualification_threshold').val()
+        });
+        
+        if (datePosted && datePosted !== 'any') {
+            console.log(`Applying date filter: past ${datePosted} days`);
+            statusDiv.html(`
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    Searching LinkedIn jobs from past ${datePosted} days...
+                </div>
+                <div class="small text-muted">
+                    <strong>Keywords:</strong> ${keywords}<br>
+                    <strong>Location:</strong> ${location}<br>
+                    <strong>Date Filter:</strong> Past ${datePosted} days
+                </div>
+            `);
+        } else {
+            statusDiv.html(`
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    Searching LinkedIn jobs...
+                </div>
+                <div class="small text-muted">
+                    <strong>Keywords:</strong> ${keywords}<br>
+                    <strong>Location:</strong> ${location}<br>
+                    <strong>Date Filter:</strong> Any time
+                </div>
+            `);
+        }
+        
+        // Collect form data for LinkedIn search
+        const formData = {
+            keywords: keywords,
+            location: location,
+            date_posted: datePosted,
+            qualification_threshold: $('#qualification_threshold').val(),
+            work_arrangement: $('input[name="remote"]:checked').map(function() { return this.value; }).get(),
+            experience_level: $('input[name="experience"]:checked').map(function() { return this.value; }).get(),
+            job_type: $('input[name="job_type"]:checked').map(function() { return this.value; }).get()
+        };
+        
+        // Debug logging
+        console.log('=== FILTER DEBUG ===');
+        console.log('Work arrangement checkboxes found:', $('input[name="remote"]').length);
+        console.log('Work arrangement checkboxes checked:', $('input[name="remote"]:checked').length);
+        console.log('Work arrangement values:', $('input[name="remote"]:checked').map(function() { return this.value; }).get());
+        console.log('Experience level checkboxes found:', $('input[name="experience"]').length);
+        console.log('Experience level checkboxes checked:', $('input[name="experience"]:checked').length);
+        console.log('Experience level values:', $('input[name="experience"]:checked').map(function() { return this.value; }).get());
+        console.log('Job type checkboxes found:', $('input[name="job_type"]').length);
+        console.log('Job type checkboxes checked:', $('input[name="job_type"]:checked').length);
+        console.log('Job type values:', $('input[name="job_type"]:checked').map(function() { return this.value; }).get());
+        console.log('Form data being sent:', formData);
+        console.log('=== END FILTER DEBUG ===');
+        
+        // Make API call to LinkedIn search endpoint
+        $.ajax({
+            url: '/search/linkedin',
+            method: 'POST',
+            data: formData,
+            traditional: true,  // This ensures arrays are serialized properly
+            success: function(response) {
+                if (response.success) {
+                    analysisResults = response.results;
+                    displayResults(response);
+                    
+                    let successMessage = `Successfully found ${response.total_jobs} jobs!`;
+                    if (response.date_filter_applied) {
+                        successMessage += ` (Filtered to past ${response.date_filter_days} days)`;
+                    }
+                    showAlert(successMessage, 'success');
+                } else {
+                    // Check if it's a CAPTCHA challenge
+                    if (response.error === 'CAPTCHA_CHALLENGE' || response.requires_manual_intervention) {
+                        showCaptchaChallenge(formData);
+                } else {
+                    showAlert(response.error || 'LinkedIn search failed', 'error');
+                    }
+                }
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON ? xhr.responseJSON.error : 'Network error occurred';
+                showAlert(error, 'error');
+            },
+            complete: function() {
+                analyzeBtn.prop('disabled', false).html('<i class="fas fa-robot me-1"></i> Analyze Jobs');
+                statusDiv.html('<p class="text-success mb-0"><i class="fas fa-check-circle me-1"></i>LinkedIn search completed</p>');
+            }
+        });
+    } else {
+        // Use legacy URL-based search for other websites
+        statusDiv.html('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Building search URL and analyzing jobs...</div>');
+        
+        // Build LinkedIn search URL with all filters
+        const searchUrl = buildLinkedInSearchUrl();
+        
+        // Log the generated URL to console
+        console.log('=== LEGACY ANALYSIS STARTED ===');
+        console.log('Generated LinkedIn Search URL:', searchUrl);
+        console.log('Search Parameters:', {
+            website: website,
+            keywords: keywords,
+            locations: $('#locations').val(),
+            distance: $('#distance').val(),
+            remote: $('input[name="remote"]:checked').map(function() { return this.value; }).get(),
+            experience: $('input[name="experience"]:checked').map(function() { return this.value; }).get(),
+            job_type: $('input[name="job_type"]:checked').map(function() { return this.value; }).get(),
+            date_posted: $('#date_posted').val(),
+            qualification_threshold: $('#qualification_threshold').val()
+        });
+        console.log('=== END ANALYSIS PARAMS ===');
+        
+        // Show the generated URL to the user
+        statusDiv.html(`
+            <div class="d-flex align-items-center mb-2">
+                <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                Building search URL and analyzing jobs...
+            </div>
+            <div class="small text-muted">
+                <strong>Generated URL:</strong> <a href="${searchUrl}" target="_blank" class="text-break">${searchUrl}</a>
+            </div>
+        `);
+        
+        // Collect form data
+        const formData = {
+            website: website,
+            search_url: searchUrl,
+            keywords: keywords,
+            locations: $('#locations').val(),
+            distance: $('#distance').val(),
+            remote: $('input[name="remote"]:checked').map(function() { return this.value; }).get(),
+            experience: $('input[name="experience"]:checked').map(function() { return this.value; }).get(),
+            job_type: $('input[name="job_type"]:checked').map(function() { return this.value; }).get(),
+            date_posted: $('#date_posted').val(),
+            qualification_threshold: $('#qualification_threshold').val()
+        };
+        
+        // Make API call
+        $.ajax({
+            url: '/search/analyze',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    analysisResults = response.results;
+                    displayResults(response);
+                    showAlert(`Successfully analyzed ${response.total_jobs} jobs!`, 'success');
+                } else {
+                    showAlert(response.error || 'Analysis failed', 'error');
+                }
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON ? xhr.responseJSON.error : 'Network error occurred';
+                showAlert(error, 'error');
+            },
+            complete: function() {
+                analyzeBtn.prop('disabled', false).html('<i class="fas fa-robot me-1"></i> Analyze Jobs');
+                statusDiv.html('<p class="text-success mb-0"><i class="fas fa-check-circle me-1"></i>Analysis completed</p>');
+            }
+        });
+    }
+}
+
+function displayResults(response) {
+    const resultsDiv = $('#analysis-results');
+    const summaryDiv = $('#results-summary');
+    const jobsListDiv = $('#jobs-list');
+    
+    // Show results section
+    resultsDiv.show();
+    
+    // Update total jobs count in the save button
+    $('#total-jobs-count').text(response.total_jobs);
+    
+    // Display summary
+    const qualifiedCount = response.results.filter(job => job.score >= 60).length;
+    const excellentCount = response.results.filter(job => job.score >= 80).length;
+    
+    summaryDiv.html(`
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-primary mb-1">${response.total_jobs}</h4>
+                    <small class="text-muted">Total Jobs</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-success mb-1">${qualifiedCount}</h4>
+                    <small class="text-muted">Qualified (60+)</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-success mb-1">${excellentCount}</h4>
+                    <small class="text-muted">Excellent (80+)</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-primary mb-1">${Math.round(response.results.reduce((sum, job) => sum + job.score, 0) / response.total_jobs)}</h4>
+                    <small class="text-muted">Avg Score</small>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    // Display jobs
+    let jobsHtml = '';
+    response.results.forEach((job, index) => {
+        const scoreClass = getScoreClass(job.score);
+        const scoreText = getScoreText(job.score);
+        
+        jobsHtml += `
+            <div class="card job-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-1">
+                                <a href="#" onclick="showJobDetails(${index})" class="text-decoration-none">${job.job_title}</a>
+                            </h6>
+                            <p class="text-muted mb-1">${job.company}</p>
+                            <small class="text-muted">${job.location}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge ${scoreClass} score-badge">${job.score}/100</span>
+                            <div class="small text-muted mt-1">${scoreText}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            ${job.strengths && job.strengths.length > 0 ? `
+                                <div class="mb-2">
+                                    <small class="text-success"><strong>Strengths:</strong></small>
+                                    <div class="small text-muted">${job.strengths.slice(0, 2).join(', ')}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="col-md-6">
+                            ${job.concerns && job.concerns.length > 0 ? `
+                                <div class="mb-2">
+                                    <small class="text-warning"><strong>Concerns:</strong></small>
+                                    <div class="small text-muted">${job.concerns.slice(0, 2).join(', ')}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showJobDetails(${index})">
+                            <i class="fas fa-eye me-1"></i> View Details
+                        </button>
+                        <button class="btn btn-sm btn-success ms-1 save-single-job-btn" data-job-index="${index}" data-job-id="${job.job_url}" data-job-title="${job.job_title}">
+                            <i class="fas fa-save me-1"></i> Save This Job
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    jobsListDiv.html(jobsHtml);
+}
+
+function showJobDetails(index) {
+    const job = analysisResults[index];
+    const modal = new bootstrap.Modal(document.getElementById('jobModal'));
+    
+    $('#jobModalTitle').text(job.job_title);
+    $('#jobModalLink').attr('href', job.job_url);
+    
+    const modalBody = $('#jobModalBody');
+    modalBody.html(`
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Job Information</h6>
+                <p><strong>Company:</strong> ${job.company}</p>
+                <p><strong>Location:</strong> ${job.location}</p>
+                <p><strong>Score:</strong> <span class="badge ${getScoreClass(job.score)} score-badge">${job.score}/100</span></p>
+                ${job.required_experience ? `<p><strong>Required Experience:</strong> ${job.required_experience}</p>` : ''}
+                ${job.education_requirements ? `<p><strong>Education:</strong> ${job.education_requirements}</p>` : ''}
+            </div>
+            <div class="col-md-6">
+                <h6>AI Analysis</h6>
+                <p><strong>Reasoning:</strong></p>
+                <p class="text-muted">${job.reasoning}</p>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6>Key Skills</h6>
+                ${job.key_skills && job.key_skills.length > 0 ? 
+                    `<div class="d-flex flex-wrap gap-1">${job.key_skills.map(skill => `<span class="badge bg-light text-dark">${skill}</span>`).join('')}</div>` : 
+                    '<p class="text-muted">No skills listed</p>'
+                }
+            </div>
+            <div class="col-md-6">
+                <h6>Strengths</h6>
+                ${job.strengths && job.strengths.length > 0 ? 
+                    `<ul class="list-unstyled"><li class="text-success"><i class="fas fa-check me-1"></i>${job.strengths.join('</li><li class="text-success"><i class="fas fa-check me-1"></i>')}</li></ul>` : 
+                    '<p class="text-muted">No specific strengths identified</p>'
+                }
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Potential Concerns</h6>
+                ${job.concerns && job.concerns.length > 0 ? 
+                    `<ul class="list-unstyled"><li class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>${job.concerns.join('</li><li class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>')}</li></ul>` : 
+                    '<p class="text-muted">No major concerns identified</p>'
+                }
+            </div>
+        </div>
+    `);
+    
+    modal.show();
+}
+
+function debugJobUrl() {
+    const currentJobUrl = $('#jobModalLink').attr('href');
+    const jobTitle = $('#jobModalTitle').text();
+    
+    alert(`Debug Info:\n\nJob Title: ${jobTitle}\nJob URL: ${currentJobUrl}\n\nThis will help identify if the URL is being set correctly.`);
+}
+
+function saveJobFromSearch(index) {
+    const job = analysisResults[index];
+    const jobCard = $('.job-card').eq(index);
+    const saveBtn = jobCard.find('.save-single-job-btn');
+    
+    // Show loading state
+    const originalText = saveBtn.html();
+    saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+    
+    $.ajax({
+        url: '/results/save_single',
+        method: 'POST',
+        data: { job_url: job.job_url },
+        success: function(response) {
+            if (response.success) {
+                showAlert(`Successfully saved "${job.job_title}" to Google Sheets!`, 'success');
+                // Change button to show saved state
+                saveBtn.removeClass('btn-success').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> Saved');
+            } else {
+                showAlert(response.error || 'Failed to save job', 'error');
+                // Reset button
+                saveBtn.prop('disabled', false).html(originalText);
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON ? xhr.responseJSON.error : 'Network error occurred';
+            showAlert(error, 'error');
+            // Reset button
+            saveBtn.prop('disabled', false).html(originalText);
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Threshold slider functionality
+    $('#qualification_threshold').on('input', function() {
+        $('.threshold-value').text($(this).val() + '%');
+    });
+    
+    // Initialize threshold value display
+    $('.threshold-value').text($('#qualification_threshold').val() + '%');
+    
+    // Form validation
+    $('#keywords').on('input', function() {
+        const keywords = $(this).val().trim();
+        if (keywords.length > 0) {
+            $(this).removeClass('is-invalid').addClass('is-valid');
+        } else {
+            $(this).removeClass('is-valid').addClass('is-invalid');
+        }
+    });
+    
+    // Event binding for individual save buttons (using event delegation for dynamically added elements)
+    $(document).on('click', '.save-single-job-btn', function() {
+        const index = $(this).data('job-index');
+        console.log('Button clicked for job index:', index);
+        saveJobFromSearch(index);
+    });
+});
+
+// Build LinkedIn search URL with all filters
+function buildLinkedInSearchUrl() {
+    const baseUrl = 'https://www.linkedin.com/jobs/search/';
+    const params = new URLSearchParams();
+    
+    // Keywords (required)
+    const keywords = $('#keywords').val().trim();
+    if (keywords) {
+        params.set('keywords', keywords);
+    }
+    
+    // Location
+    const locations = $('#locations').val().trim();
+    if (locations) {
+        params.set('location', locations);
+    }
+    
+    // Date posted
+    const datePosted = $('#date_posted').val();
+    if (datePosted && datePosted !== 'any') {
+        params.set('f_TPR', datePosted);
+    }
+    
+    // Job type (multiple selection)
+    const jobTypes = $('input[name="job_type"]:checked').map(function() { return this.value; }).get();
+    if (jobTypes.length > 0) {
+        // LinkedIn job type codes
+        const jobTypeMap = {
+            'full-time': 'F',
+            'part-time': 'P', 
+            'contract': 'C',
+            'temporary': 'T',
+            'internship': 'I'
+        };
+        const linkedInJobTypes = jobTypes.map(type => jobTypeMap[type]).filter(Boolean);
+        if (linkedInJobTypes.length > 0) {
+            params.set('f_JT', linkedInJobTypes.join(','));
+        }
+    }
+    
+    // Experience level (multiple selection)
+    const experienceLevels = $('input[name="experience"]:checked').map(function() { return this.value; }).get();
+    if (experienceLevels.length > 0) {
+        // LinkedIn experience level codes
+        const experienceMap = {
+            'entry': '2',
+            'associate': '3',
+            'mid': '4',
+            'senior': '4',
+            'director': '5',
+            'executive': '6'
+        };
+        const linkedInExperience = experienceLevels.map(level => experienceMap[level]).filter(Boolean);
+        if (linkedInExperience.length > 0) {
+            params.set('f_E', linkedInExperience.join(','));
+        }
+    }
+    
+    // Remote work (multiple selection)
+    const remoteOptions = $('input[name="remote"]:checked').map(function() { return this.value; }).get();
+    if (remoteOptions.length > 0) {
+        // LinkedIn remote work codes
+        const remoteMap = {
+            'remote': '1',
+            'on-site': '2',
+            'hybrid': '3'
+        };
+        const linkedInRemote = remoteOptions.map(option => remoteMap[option]).filter(Boolean);
+        if (linkedInRemote.length > 0) {
+            params.set('f_WT', linkedInRemote.join(','));
+        }
+    }
+    
+    // Distance (if location is specified)
+    const distance = $('#distance').val();
+    if (locations && distance && distance !== 'exact') {
+        params.set('distance', distance);
+    }
+    
+    // Build the final URL
+    const searchUrl = baseUrl + '?' + params.toString();
+    console.log('Generated LinkedIn search URL:', searchUrl);
+    
+    return searchUrl;
+}
+
+// Clear filters function (optional)
+function clearFilters() {
+    // Clear all filter inputs
+    $('#locations').val('');
+    $('#distance').val('25');
+    $('input[name="remote"]').prop('checked', false);
+    $('input[name="experience"]').prop('checked', false);
+    $('input[name="job_type"]').prop('checked', false);
+    $('#date_posted').val('any');
+    $('#qualification_threshold').val('70');
+    $('.threshold-value').text('70%');
+    
+    showAlert('Filters cleared!', 'info');
+}
+
+function saveAllJobsFromSearch() {
+    const totalJobsCount = analysisResults.length;
+
+    if (totalJobsCount === 0) {
+        showAlert('No jobs to save. Please analyze jobs first.', 'warning');
+        return;
+    }
+
+    const saveAllBtn = $('button[onclick="saveAllJobsFromSearch()"]');
+    const originalText = saveAllBtn.html();
+    
+    // Show loading state
+    saveAllBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving All...');
+    
+    $.ajax({
+        url: '/results/save_all_jobs',
+        method: 'POST',
+        success: function(response) {
+            if (response.success) {
+                showAlert('Successfully saved ' + response.count + ' jobs to Google Sheets!', 'success');
+                // Change button to show saved state
+                saveAllBtn.removeClass('btn-primary').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> All Saved');
+            } else {
+                showAlert(response.error || 'Failed to save jobs', 'error');
+                // Reset button
+                saveAllBtn.prop('disabled', false).html(originalText);
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON ? xhr.responseJSON.error : 'Network error occurred';
+            showAlert(error, 'error');
+            // Reset button
+            saveAllBtn.prop('disabled', false).html(originalText);
+        }
+    });
+}
+
+// CAPTCHA Challenge Handler
+function showCaptchaChallenge(formData) {
+    const statusDiv = $('#analysis-status');
+    
+    // Show CAPTCHA challenge message
+    statusDiv.html(`
+        <div class="alert alert-warning" role="alert">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-shield-alt fa-2x text-warning me-3"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading">Security Verification Required</h5>
+                    <p class="mb-3">
+                        LinkedIn has detected automated access and requires manual verification. 
+                        A browser window should have opened with a security challenge.
+                    </p>
+                    <div class="mb-3">
+                        <strong>Please complete the following steps:</strong>
+                        <ol class="mb-0 mt-2">
+                            <li>Look for the browser window that opened automatically</li>
+                            <li>Complete the security challenge (CAPTCHA, puzzle, or verification)</li>
+                            <li>Wait for the page to load successfully</li>
+                            <li>Click the "Continue Analysis" button below</li>
+                        </ol>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="continueAfterCaptcha(${JSON.stringify(formData).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-play me-1"></i> Continue Analysis
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="cancelCaptcha()">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    // Show alert to user
+    showAlert('Security verification required. Please complete the challenge in the browser window.', 'warning');
+}
+
+function continueAfterCaptcha(formData) {
+    const statusDiv = $('#analysis-status');
+    const analyzeBtn = $('button[onclick="analyzeJobs()"]');
+    
+    // Show loading state
+    analyzeBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Continuing...');
+    statusDiv.html(`
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+            Continuing analysis after security verification...
+        </div>
+    `);
+    
+    // Make API call to continue after CAPTCHA
+    $.ajax({
+        url: '/search/linkedin/captcha',
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            if (response.success) {
+                analysisResults = response.results;
+                displayResults(response);
+                
+                let successMessage = `Successfully found ${response.total_jobs} jobs!`;
+                if (response.date_filter_applied) {
+                    successMessage += ` (Filtered to past ${response.date_filter_days} days)`;
+                }
+                showAlert(successMessage, 'success');
+            } else {
+                showAlert(response.error || 'LinkedIn search failed after verification', 'error');
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON ? xhr.responseJSON.error : 'Network error occurred';
+            showAlert(error, 'error');
+        },
+        complete: function() {
+            analyzeBtn.prop('disabled', false).html('<i class="fas fa-robot me-1"></i> Analyze Jobs');
+            statusDiv.html('<p class="text-success mb-0"><i class="fas fa-check-circle me-1"></i>LinkedIn search completed</p>');
+        }
+    });
+}
+
+function cancelCaptcha() {
+    const statusDiv = $('#analysis-status');
+    const analyzeBtn = $('button[onclick="analyzeJobs()"]');
+    
+    // Reset to initial state
+    analyzeBtn.prop('disabled', false).html('<i class="fas fa-robot me-1"></i> Analyze Jobs');
+    statusDiv.html('<p class="text-muted mb-0">Ready to analyze jobs</p>');
+    
+    showAlert('Analysis cancelled. You can try again when ready.', 'info');
+}
+</script>
+{% endblock %} 

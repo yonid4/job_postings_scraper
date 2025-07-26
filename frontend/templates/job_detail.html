@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.title }} at {{ job.company }} - Job Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('jobs_page') }}">Jobs</a></li>
+            <li class="breadcrumb-item active">{{ job.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Job Content -->
+        <div class="col-lg-8">
+            <!-- Job Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h1 class="h2 mb-2">{{ job.title }}</h1>
+                            <h3 class="h5 text-muted mb-3">{{ job.company }}</h3>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-map-marker-alt text-muted me-2"></i>
+                                        <span>{{ job.location or 'Location not specified' }}</span>
+                                    </div>
+                                    {% if job.posted_date %}
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-calendar text-muted me-2"></i>
+                                        <span>Posted {{ job.posted_date.strftime('%B %d, %Y') }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if job.salary_min or job.salary_max %}
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-dollar-sign text-muted me-2"></i>
+                                        <span>
+                                            {% if job.salary_min and job.salary_max %}
+                                                ${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}
+                                            {% elif job.salary_min %}
+                                                From ${{ "{:,}".format(job.salary_min) }}
+                                            {% elif job.salary_max %}
+                                                Up to ${{ "{:,}".format(job.salary_max) }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% if job.job_type %}
+                                        <span class="badge bg-primary">{{ job.job_type.value|title }}</span>
+                                        {% endif %}
+                                        {% if job.experience_level %}
+                                        <span class="badge bg-info">{{ job.experience_level.value|title }}</span>
+                                        {% endif %}
+                                        {% if job.remote_type %}
+                                        <span class="badge bg-success">{{ job.remote_type.value|title }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-outline-primary mb-2" onclick="toggleFavorite('{{ job.id }}')">
+                                <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
+                                {% if is_favorited %}Favorited{% else %}Favorite{% endif %}
+                            </button>
+                            <br>
+                            <a href="{{ job.job_url }}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt"></i> View Original
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Description -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Job Description</h5>
+                </div>
+                <div class="card-body">
+                    <div class="job-description">
+                        {{ job.description|safe|nl2br }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requirements -->
+            {% if job.requirements %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Requirements</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for requirement in job.requirements %}
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            {{ requirement }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Responsibilities -->
+            {% if job.responsibilities %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Responsibilities</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for responsibility in job.responsibilities %}
+                        <li class="mb-2">
+                            <i class="fas fa-arrow-right text-primary me-2"></i>
+                            {{ responsibility }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Benefits -->
+            {% if job.benefits %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Benefits</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for benefit in job.benefits %}
+                        <li class="mb-2">
+                            <i class="fas fa-gift text-warning me-2"></i>
+                            {{ benefit }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Application Status -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Application Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if application %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-{{ get_status_color(application.status.value) }} fs-6">
+                                    {{ application.status.value|title }}
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="editApplication()">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Applied: {{ application.applied_date.strftime('%B %d, %Y') }}
+                            </small>
+                            {% if application.application_method %}
+                            <br>
+                            <small class="text-muted">
+                                Method: {{ application.application_method.value|replace('_', ' ')|title }}
+                            </small>
+                            {% endif %}
+                        </div>
+                        
+                        {% if application.notes %}
+                        <div class="mb-3">
+                            <h6>Notes:</h6>
+                            <p class="text-muted small">{{ application.notes }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if application.follow_up_date %}
+                        <div class="mb-3">
+                            <h6>Follow-up Date:</h6>
+                            <p class="text-muted small">{{ application.follow_up_date.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if application.interview_date %}
+                        <div class="mb-3">
+                            <h6>Interview Date:</h6>
+                            <p class="text-muted small">{{ application.interview_date.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if application.salary_offered %}
+                        <div class="mb-3">
+                            <h6>Salary Offered:</h6>
+                            <p class="text-success">${{ "{:,}".format(application.salary_offered) }}</p>
+                        </div>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="text-center mb-3">
+                            <span class="badge bg-secondary fs-6">Not Applied</span>
+                        </div>
+                        <button type="button" class="btn btn-success w-100" onclick="markAsApplied('{{ job.id }}')">
+                            <i class="fas fa-check"></i> Mark as Applied
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if not application %}
+                        <button type="button" class="btn btn-success" onclick="markAsApplied('{{ job.id }}')">
+                            <i class="fas fa-check"></i> Mark as Applied
+                        </button>
+                        {% endif %}
+                        
+                        <button type="button" class="btn btn-outline-primary" onclick="toggleFavorite('{{ job.id }}')">
+                            <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
+                            {% if is_favorited %}Remove from{% else %}Add to{% endif %} Favorites
+                        </button>
+                        
+                        {% if job.application_url %}
+                        <a href="{{ job.application_url }}" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt"></i> Apply Now
+                        </a>
+                        {% endif %}
+                        
+                        <button type="button" class="btn btn-outline-secondary" onclick="shareJob()">
+                            <i class="fas fa-share"></i> Share Job
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Metadata -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Job Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Job Site</small>
+                            <p class="mb-2">{{ job.job_site|title }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Scraped</small>
+                            <p class="mb-2">{{ job.scraped_date.strftime('%m/%d/%Y') }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if job.application_deadline %}
+                    <div class="row">
+                        <div class="col-12">
+                            <small class="text-muted">Application Deadline</small>
+                            <p class="mb-2">{{ job.application_deadline.strftime('%B %d, %Y') }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if job.notes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <small class="text-muted">Notes</small>
+                            <p class="mb-2">{{ job.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply to Job Modal -->
+<div class="modal fade" id="applyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mark as Applied</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="applyForm">
+                    <input type="hidden" id="applyJobId" value="{{ job.id }}">
+                    
+                    <div class="mb-3">
+                        <label for="appliedDate" class="form-label">Application Date</label>
+                        <input type="date" class="form-control" id="appliedDate" 
+                               value="{{ today }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="applicationMethod" class="form-label">Application Method</label>
+                        <select class="form-select" id="applicationMethod" required>
+                            <option value="manual">Manual Application</option>
+                            <option value="linkedin_easy_apply">LinkedIn Easy Apply</option>
+                            <option value="indeed_quick_apply">Indeed Quick Apply</option>
+                            <option value="email">Email</option>
+                            <option value="company_website">Company Website</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="applicationNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="applicationNotes" rows="3" 
+                                  placeholder="Any notes about this application..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitApplication()">
+                    <i class="fas fa-check"></i> Mark as Applied
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Application Modal -->
+<div class="modal fade" id="editApplicationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Application</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editApplicationForm">
+                    <input type="hidden" id="editJobId" value="{{ job.id }}">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppliedDate" class="form-label">Application Date</label>
+                                <input type="date" class="form-control" id="editAppliedDate" 
+                                       value="{{ application.applied_date.strftime('%Y-%m-%d') if application else today }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editApplicationMethod" class="form-label">Application Method</label>
+                                <select class="form-select" id="editApplicationMethod" required>
+                                    <option value="manual" {% if application and application.application_method.value == 'manual' %}selected{% endif %}>Manual Application</option>
+                                    <option value="linkedin_easy_apply" {% if application and application.application_method.value == 'linkedin_easy_apply' %}selected{% endif %}>LinkedIn Easy Apply</option>
+                                    <option value="indeed_quick_apply" {% if application and application.application_method.value == 'indeed_quick_apply' %}selected{% endif %}>Indeed Quick Apply</option>
+                                    <option value="email" {% if application and application.application_method.value == 'email' %}selected{% endif %}>Email</option>
+                                    <option value="company_website" {% if application and application.application_method.value == 'company_website' %}selected{% endif %}>Company Website</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editStatus" class="form-label">Status</label>
+                                <select class="form-select" id="editStatus" required>
+                                    <option value="applied" {% if application and application.status.value == 'applied' %}selected{% endif %}>Applied</option>
+                                    <option value="interviewing" {% if application and application.status.value == 'interviewing' %}selected{% endif %}>Interviewing</option>
+                                    <option value="offered" {% if application and application.status.value == 'offered' %}selected{% endif %}>Offered</option>
+                                    <option value="rejected" {% if application and application.status.value == 'rejected' %}selected{% endif %}>Rejected</option>
+                                    <option value="withdrawn" {% if application and application.status.value == 'withdrawn' %}selected{% endif %}>Withdrawn</option>
+                                    <option value="accepted" {% if application and application.status.value == 'accepted' %}selected{% endif %}>Accepted</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editFollowUpDate" class="form-label">Follow-up Date</label>
+                                <input type="date" class="form-control" id="editFollowUpDate" 
+                                       value="{{ application.follow_up_date.strftime('%Y-%m-%d') if application and application.follow_up_date else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editInterviewDate" class="form-label">Interview Date</label>
+                                <input type="date" class="form-control" id="editInterviewDate" 
+                                       value="{{ application.interview_date.strftime('%Y-%m-%d') if application and application.interview_date else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editSalaryOffered" class="form-label">Salary Offered</label>
+                                <input type="number" class="form-control" id="editSalaryOffered" 
+                                       value="{{ application.salary_offered if application and application.salary_offered else '' }}" 
+                                       placeholder="Enter amount">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editApplicationNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="editApplicationNotes" rows="4" 
+                                  placeholder="Any notes about this application...">{{ application.notes if application else '' }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditApplication()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('appliedDate').value = today;
+});
+
+// Application functions
+function markAsApplied(jobId) {
+    document.getElementById('applyJobId').value = jobId;
+    const modal = new bootstrap.Modal(document.getElementById('applyModal'));
+    modal.show();
+}
+
+function submitApplication() {
+    const jobId = document.getElementById('applyJobId').value;
+    const appliedDate = document.getElementById('appliedDate').value;
+    const applicationMethod = document.getElementById('applicationMethod').value;
+    const notes = document.getElementById('applicationNotes').value;
+    
+    fetch('/api/jobs/apply', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_id: jobId,
+            applied_date: appliedDate,
+            application_method: applicationMethod,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Reload page to update status
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to record application');
+    });
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('applyModal')).hide();
+}
+
+function editApplication() {
+    const modal = new bootstrap.Modal(document.getElementById('editApplicationModal'));
+    modal.show();
+}
+
+function submitEditApplication() {
+    const jobId = document.getElementById('editJobId').value;
+    const appliedDate = document.getElementById('editAppliedDate').value;
+    const applicationMethod = document.getElementById('editApplicationMethod').value;
+    const status = document.getElementById('editStatus').value;
+    const followUpDate = document.getElementById('editFollowUpDate').value;
+    const interviewDate = document.getElementById('editInterviewDate').value;
+    const salaryOffered = document.getElementById('editSalaryOffered').value;
+    const notes = document.getElementById('editApplicationNotes').value;
+    
+    // First update the status
+    fetch('/api/jobs/status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_id: jobId,
+            status: status,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Application updated successfully');
+            // Reload page to update status
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to update application');
+    });
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('editApplicationModal')).hide();
+}
+
+// Favorite functions
+function toggleFavorite(jobId) {
+    fetch('/api/jobs/favorite', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_id: jobId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Update UI
+            const favoriteBtn = document.querySelector('.btn-outline-primary');
+            const starIcon = favoriteBtn.querySelector('.fas.fa-star');
+            
+            if (data.is_favorited) {
+                starIcon.classList.add('text-warning');
+                favoriteBtn.innerHTML = '<i class="fas fa-star text-warning"></i> Favorited';
+            } else {
+                starIcon.classList.remove('text-warning');
+                favoriteBtn.innerHTML = '<i class="fas fa-star"></i> Favorite';
+            }
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to update favorite status');
+    });
+}
+
+// Share function
+function shareJob() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ job.title }} at {{ job.company }}',
+            text: 'Check out this job opportunity!',
+            url: window.location.href
+        });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showAlert('success', 'Job link copied to clipboard!');
+        });
+    }
+}
+
+// Utility functions
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.job-description {
+    line-height: 1.6;
+}
+
+.job-description p {
+    margin-bottom: 1rem;
+}
+
+.badge.bg-applied { background-color: #28a745; }
+.badge.bg-interviewing { background-color: #ffc107; }
+.badge.bg-offered { background-color: #17a2b8; }
+.badge.bg-rejected { background-color: #dc3545; }
+.badge.bg-withdrawn { background-color: #6c757d; }
+.badge.bg-accepted { background-color: #198754; }
+</style>
+{% endblock %} 

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Job Qualification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Welcome to AI Job Qualification System</h1>
+                <p class="text-muted mb-0">Intelligent job matching powered by AI</p>
+            </div>
+            <div class="text-end">
+                <div class="badge bg-success fs-6">v2.0.0</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-user-graduate fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">Profile</h5>
+                <p class="card-text">Manage your qualifications</p>
+                <a href="{{ url_for('profile') }}" class="btn btn-outline-primary btn-sm">View Profile</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-search fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">Job Search</h5>
+                <p class="card-text">Analyze job opportunities</p>
+                <a href="{{ url_for('search') }}" class="btn btn-outline-primary btn-sm">Start Search</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-chart-bar fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">Results</h5>
+                <p class="card-text">View analysis results</p>
+                <a href="{{ url_for('results') }}" class="btn btn-outline-primary btn-sm">View Results</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-cog fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">Settings</h5>
+                <p class="card-text">Configure system</p>
+                <a href="{{ url_for('settings') }}" class="btn btn-outline-primary btn-sm">Settings</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    How It Works
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-user fa-lg"></i>
+                            </div>
+                        </div>
+                        <h6>1. Set Your Profile</h6>
+                        <p class="text-muted small">Define your experience, education, and skills</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-link fa-lg"></i>
+                            </div>
+                        </div>
+                        <h6>2. Add Job URLs</h6>
+                        <p class="text-muted small">Paste LinkedIn search URLs or individual job links</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-robot fa-lg"></i>
+                            </div>
+                        </div>
+                        <h6>3. AI Analysis</h6>
+                        <p class="text-muted small">AI analyzes each job against your profile</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-check-circle fa-lg"></i>
+                            </div>
+                        </div>
+                        <h6>4. Get Results</h6>
+                        <p class="text-muted small">Review qualification scores and save to Google Sheets</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Start -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2"></i>
+                    Quick Start
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>1. Complete Your Profile</h6>
+                    <p class="text-muted small">Set up your experience, education, and skills to get accurate matches.</p>
+                    <a href="{{ url_for('profile') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-user me-1"></i> Set Up Profile
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <h6>2. Configure Settings</h6>
+                    <p class="text-muted small">Add your Gemini API key and Google Sheets for full functionality.</p>
+                    <a href="{{ url_for('settings') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-cog me-1"></i> Configure Settings
+                    </a>
+                </div>
+                <div>
+                    <h6>3. Start Job Search</h6>
+                    <p class="text-muted small">Paste LinkedIn search URLs to analyze multiple jobs at once.</p>
+                    <a href="{{ url_for('search') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-search me-1"></i> Start Search
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="system-status">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Checking system status...</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6>Features Available:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-2"></i>
+                            LinkedIn job extraction
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-2"></i>
+                            AI qualification analysis
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Google Sheets integration
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Custom rule-based analysis
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tips -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tips me-2"></i>
+                    Pro Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                            <div>
+                                <h6>Use Search URLs</h6>
+                                <p class="text-muted small">Paste LinkedIn search URLs to analyze multiple jobs at once instead of individual job links.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                            <div>
+                                <h6>Keep Profile Updated</h6>
+                                <p class="text-muted small">Regularly update your skills and experience to get more accurate qualification scores.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                            <div>
+                                <h6>Save to Sheets</h6>
+                                <p class="text-muted small">Use Google Sheets integration to keep track of qualified jobs and your application decisions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Check system status
+    $.get('/api/health')
+        .done(function(data) {
+            $('#system-status').html(`
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    <span>System is running</span>
+                </div>
+                <small class="text-muted">Last checked: ${new Date().toLocaleTimeString()}</small>
+            `);
+        })
+        .fail(function() {
+            $('#system-status').html(`
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <span>System status unknown</span>
+                </div>
+                <small class="text-muted">Unable to connect to backend</small>
+            `);
+        });
+});
+</script>
+{% endblock %} 

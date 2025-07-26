@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - AI Job Qualification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Your Profile</h1>
+                <p class="text-muted mb-0">Manage your qualifications and preferences</p>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-primary" onclick="saveProfile()">
+                    <i class="fas fa-save me-1"></i> Save Profile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form id="profile-form" method="POST" action="{{ url_for('update_profile') }}">
+            <!-- Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2"></i>
+                        Basic Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="years_of_experience" class="form-label">Years of Experience</label>
+                            <select class="form-select" id="years_of_experience" name="years_of_experience" required>
+                                <option value="0" {% if profile and profile.years_of_experience == 0 %}selected{% endif %}>0-1 years</option>
+                                <option value="1" {% if profile and profile.years_of_experience == 1 %}selected{% endif %}>1-2 years</option>
+                                <option value="2" {% if profile and profile.years_of_experience == 2 %}selected{% endif %}>2-3 years</option>
+                                <option value="3" {% if profile and profile.years_of_experience == 3 %}selected{% endif %}>3-5 years</option>
+                                <option value="5" {% if profile and profile.years_of_experience == 5 %}selected{% endif %}>5-7 years</option>
+                                <option value="7" {% if profile and profile.years_of_experience == 7 %}selected{% endif %}>7-10 years</option>
+                                <option value="10" {% if profile and profile.years_of_experience >= 10 %}selected{% endif %}>10+ years</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="experience_level" class="form-label">Experience Level</label>
+                            <select class="form-select" id="experience_level" name="experience_level" required>
+                                <option value="entry" {% if profile and profile.experience_level == 'entry' %}selected{% endif %}>Entry Level</option>
+                                <option value="junior" {% if profile and profile.experience_level == 'junior' %}selected{% endif %}>Junior</option>
+                                <option value="mid" {% if profile and profile.experience_level == 'mid' %}selected{% endif %}>Mid Level</option>
+                                <option value="senior" {% if profile and profile.experience_level == 'senior' %}selected{% endif %}>Senior</option>
+                                <option value="lead" {% if profile and profile.experience_level == 'lead' %}selected{% endif %}>Lead</option>
+                                <option value="principal" {% if profile and profile.experience_level == 'principal' %}selected{% endif %}>Principal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Education -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        Education
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="has_college_degree" name="has_college_degree" value="true" 
+                                       {% if profile and profile.has_college_degree %}checked{% endif %}>
+                                <label class="form-check-label" for="has_college_degree">
+                                    College Graduate
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="field_of_study" class="form-label">Field of Study</label>
+                            <input type="text" class="form-control" id="field_of_study" name="field_of_study" 
+                                   value="{{ profile.field_of_study if profile else '' }}" 
+                                   placeholder="e.g., Computer Science, Information Technology">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skills -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        Skills & Technologies
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <label for="additional_skills" class="form-label">Technical Skills</label>
+                    <textarea class="form-control" id="additional_skills" name="additional_skills" rows="4" 
+                              placeholder="Enter your skills separated by commas (e.g., Python, JavaScript, React, AWS, Docker)">{{ profile.additional_skills|join(', ') if profile and profile.additional_skills else '' }}</textarea>
+                    <div class="form-text">Separate multiple skills with commas</div>
+                </div>
+            </div>
+
+            <!-- Preferences -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        Location & Preferences
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="remote_preference" class="form-label">Remote Preference</label>
+                            <select class="form-select" id="remote_preference" name="remote_preference">
+                                <option value="any" {% if profile and profile.remote_preference == 'any' %}selected{% endif %}>Any (Remote, Hybrid, On-site)</option>
+                                <option value="remote" {% if profile and profile.remote_preference == 'remote' %}selected{% endif %}>Remote Only</option>
+                                <option value="hybrid" {% if profile and profile.remote_preference == 'hybrid' %}selected{% endif %}>Hybrid</option>
+                                <option value="onsite" {% if profile and profile.remote_preference == 'onsite' %}selected{% endif %}>On-site Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="preferred_locations" class="form-label">Preferred Locations</label>
+                            <input type="text" class="form-control" id="preferred_locations" name="preferred_locations" 
+                                   value="{{ profile.preferred_locations|join(', ') if profile and profile.preferred_locations else '' }}" 
+                                   placeholder="e.g., San Francisco, CA, New York, NY, Remote">
+                            <div class="form-text">Separate locations with commas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Salary Range -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-dollar-sign me-2"></i>
+                        Salary Expectations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="salary_min" class="form-label">Minimum Salary ($)</label>
+                            <input type="number" class="form-control" id="salary_min" name="salary_min" 
+                                   value="{{ profile.salary_min if profile and profile.salary_min else 50000 }}" min="0" step="1000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="salary_max" class="form-label">Maximum Salary ($)</label>
+                            <input type="number" class="form-control" id="salary_max" name="salary_max" 
+                                   value="{{ profile.salary_max if profile and profile.salary_max else 150000 }}" min="0" step="1000">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Profile Summary -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Profile Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="profile-summary">
+                    {% if profile %}
+                        <div class="mb-3">
+                            <h6>Experience</h6>
+                            <p class="text-muted mb-1">{{ profile.years_of_experience }} years</p>
+                            <p class="text-muted mb-0">{{ profile.experience_level|title }} Level</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Education</h6>
+                            <p class="text-muted mb-1">
+                                {% if profile.has_college_degree %}College Graduate{% else %}No College Degree{% endif %}
+                            </p>
+                            {% if profile.field_of_study %}
+                                <p class="text-muted mb-0">{{ profile.field_of_study }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <h6>Skills</h6>
+                            {% if profile.additional_skills %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for skill in profile.additional_skills[:5] %}
+                                        <span class="badge bg-light text-dark">{{ skill }}</span>
+                                    {% endfor %}
+                                    {% if profile.additional_skills|length > 5 %}
+                                        <span class="badge bg-light text-dark">+{{ profile.additional_skills|length - 5 }} more</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted mb-0">No skills listed</p>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <h6>Preferences</h6>
+                            <p class="text-muted mb-1">{{ profile.remote_preference|title }}</p>
+                            {% if profile.preferred_locations %}
+                                <p class="text-muted mb-0">{{ profile.preferred_locations|join(', ') }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h6>Salary Range</h6>
+                            <p class="text-muted mb-0">
+                                {% if profile.salary_min and profile.salary_max %}
+                                    ${{ "{:,}".format(profile.salary_min) }} - ${{ "{:,}".format(profile.salary_max) }}
+                                {% elif profile.salary_min %}
+                                    ${{ "{:,}".format(profile.salary_min) }} - No maximum
+                                {% elif profile.salary_max %}
+                                    No minimum - ${{ "{:,}".format(profile.salary_max) }}
+                                {% else %}
+                                    Not specified
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Complete your profile to see a summary here.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Tips for Better Matches
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Be specific with your skills
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Include relevant technologies
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Set realistic salary expectations
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Update regularly as you learn
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function saveProfile() {
+    const form = $('#profile-form');
+    const submitBtn = $('button[onclick="saveProfile()"]');
+    
+    // Show loading state
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+    
+    // Submit form
+    form.submit();
+}
+
+// Auto-update profile summary
+$(document).ready(function() {
+    function updateSummary() {
+        const years = $('#years_of_experience').val();
+        const level = $('#experience_level').val();
+        const isGraduate = $('#has_college_degree').is(':checked');
+        const field = $('#field_of_study').val();
+        const skills = $('#additional_skills').val().split(',').filter(s => s.trim()).slice(0, 5);
+        const remote = $('#remote_preference').val();
+        const locations = $('#preferred_locations').val();
+        const minSalary = $('#salary_min').val();
+        const maxSalary = $('#salary_max').val();
+        
+        let summary = `
+            <div class="mb-3">
+                <h6>Experience</h6>
+                <p class="text-muted mb-1">${years} years</p>
+                <p class="text-muted mb-0">${level.charAt(0).toUpperCase() + level.slice(1)} Level</p>
+            </div>
+            <div class="mb-3">
+                <h6>Education</h6>
+                <p class="text-muted mb-1">${isGraduate ? 'College Graduate' : 'No College Degree'}</p>
+                ${field ? `<p class="text-muted mb-0">${field}</p>` : ''}
+            </div>
+            <div class="mb-3">
+                <h6>Skills</h6>
+                ${skills.length > 0 ? 
+                    `<div class="d-flex flex-wrap gap-1">
+                        ${skills.map(skill => `<span class="badge bg-light text-dark">${skill.trim()}</span>`).join('')}
+                    </div>` : 
+                    '<p class="text-muted mb-0">No skills listed</p>'
+                }
+            </div>
+            <div class="mb-3">
+                <h6>Preferences</h6>
+                <p class="text-muted mb-1">${remote.charAt(0).toUpperCase() + remote.slice(1)}</p>
+                ${locations ? `<p class="text-muted mb-0">${locations}</p>` : ''}
+            </div>
+            <div>
+                <h6>Salary Range</h6>
+                <p class="text-muted mb-0">
+                    ${minSalary && maxSalary ? 
+                        `$${parseInt(minSalary).toLocaleString()} - $${parseInt(maxSalary).toLocaleString()}` :
+                        minSalary ? 
+                            `$${parseInt(minSalary).toLocaleString()} - No maximum` :
+                            maxSalary ? 
+                                `No minimum - $${parseInt(maxSalary).toLocaleString()}` :
+                                'Not specified'
+                    }
+                </p>
+            </div>
+        `;
+        
+        $('#profile-summary').html(summary);
+    }
+    
+    // Update summary on form changes
+    $('input, select, textarea').on('change keyup', updateSummary);
+    
+    // Initial update
+    updateSummary();
+});
+</script>
+{% endblock %} 

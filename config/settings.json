@@ -1,0 +1,96 @@
+{
+  "user_profile": {
+    "years_of_experience": 0,
+    "has_college_degree": true,
+    "field_of_study": "Technology and Information Management",
+    "education_details": "Bachelor's degree in Technology and Information Management",
+    "experience_level": "entry",
+    "additional_skills": [
+      "Python",
+      "C/C++",
+      "SQL",
+      "React",
+      "Node.js",
+      "Flask",
+      "Git",
+      "Docker",
+      "Google Cloud Platform",
+      "Pandas",
+      "OpenAI API",
+      "Gemini API"
+    ],
+    "preferred_locations": [
+      "San Francisco",
+      "CA",
+      "New York",
+      "NY",
+      "Seattle",
+      "WA",
+      "Remote"
+    ],
+    "salary_min": 85000,
+    "salary_max": 200000,
+    "remote_preference": "hybrid"
+  },
+  "ai_settings": {
+    "model": "gemini-2.0-flash-lite",
+    "qualification_threshold": 70,
+    "max_tokens": 2000,
+    "temperature": 0.1,
+    "analysis_timeout": 60,
+    "retry_attempts": 3,
+    "api_key": "AIzaSyDzSwHL8HSGfNCbfMpN4WSUU0eo7G6z74A"
+  },
+  "job_criteria": {
+    "keywords": [
+      "software engineer",
+      "full stack developer",
+      "backend developer",
+      "python developer"
+    ],
+    "location": "San Francisco, CA",
+    "salary_min": 85000,
+    "salary_max": 200000,
+    "job_type": [
+      "full-time"
+    ],
+    "experience_level": [
+      "entry"
+    ]
+  },
+  "scraping_settings": {
+    "delay_min": 1.0,
+    "delay_max": 3.0,
+    "max_jobs_per_session": 100,
+    "user_agent_rotation": true,
+    "respect_robots_txt": true,
+    "timeout": 30,
+    "retry_attempts": 3
+  },
+  "api_settings": {
+    "google_sheets_credentials_path": "/Users/yonid/Desktop/autoApply-bot/config/auto-apply-bot-466218-5a1d69f23d44.json",
+    "google_sheets_spreadsheet_id": "1JRbxQYOWlVLuSgv4uhfM2ljfiiBydYsD6fj_0geYRQk",
+    "google_sheets_worksheet_name": "Qualified Jobs",
+    "email_notifications": false,
+    "email_smtp_server": "",
+    "email_smtp_port": 587,
+    "email_username": "",
+    "email_password": ""
+  },
+  "linkedin": {
+    "username": "",
+    "password": "",
+    "headless": true,
+    "delay_between_actions": 2.0,
+    "max_jobs_per_search": 50,
+    "use_date_filtering": true
+  },
+  "system_settings": {
+    "log_level": "INFO",
+    "log_file": "logs/job_qualification.log",
+    "data_directory": "data",
+    "backup_enabled": true,
+    "backup_frequency_hours": 24,
+    "debug_mode": false
+  }
+}

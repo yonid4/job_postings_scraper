@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block title %}Job Opportunities - Application Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar Filters -->
+        <div class="col-md-3 col-lg-2">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm" method="GET">
+                        <!-- Company Filter -->
+                        <div class="mb-3">
+                            <label for="company" class="form-label">Company</label>
+                            <input type="text" class="form-control" id="company" name="company" 
+                                   value="{{ filters.company }}" placeholder="Search companies...">
+                        </div>
+                        
+                        <!-- Location Filter -->
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   value="{{ filters.location }}" placeholder="City, State...">
+                        </div>
+                        
+                        <!-- Status Filter -->
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Application Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="not_applied" {% if filters.status == 'not_applied' %}selected{% endif %}>Not Applied</option>
+                                <option value="applied" {% if filters.status == 'applied' %}selected{% endif %}>Applied</option>
+                                <option value="interviewing" {% if filters.status == 'interviewing' %}selected{% endif %}>Interviewing</option>
+                                <option value="offered" {% if filters.status == 'offered' %}selected{% endif %}>Offered</option>
+                                <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Salary Range -->
+                        <div class="mb-3">
+                            <label class="form-label">Salary Range</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="salary_min" name="salary_min" 
+                                           value="{{ filters.salary_min }}" placeholder="Min">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="salary_max" name="salary_max" 
+                                           value="{{ filters.salary_max }}" placeholder="Max">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Apply Filters
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-secondary w-100 mt-2" onclick="clearFilters()">
+                            <i class="fas fa-times"></i> Clear Filters
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Analytics Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar"></i> Analytics (30 days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">{{ analytics.total_applications or 0 }}</h4>
+                            <small class="text-muted">Applications</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ "%.1f"|format(analytics.response_rate or 0) }}%</h4>
+                            <small class="text-muted">Response Rate</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-info">{{ analytics.responses_received or 0 }}</h4>
+                            <small class="text-muted">Responses</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ analytics.status_counts.get('interviewing', 0) }}</h4>
+                            <small class="text-muted">Interviews</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Job Opportunities</h1>
+                    <p class="text-muted mb-0">{{ jobs|length }} jobs found</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="toggleView('card')">
+                        <i class="fas fa-th-large"></i> Cards
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="toggleView('list')">
+                        <i class="fas fa-list"></i> List
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Bulk Actions -->
+            <div class="card mb-4" id="bulkActions" style="display: none;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <span id="selectedCount">0</span> jobs selected
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="button" class="btn btn-success me-2" onclick="bulkApply()">
+                                <i class="fas fa-check"></i> Mark as Applied
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" onclick="bulkFavorite()">
+                                <i class="fas fa-star"></i> Add to Favorites
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Job Results -->
+            <div id="jobResults">
+                {% if jobs %}
+                    <div class="row" id="jobCards">
+                        {% for job_data in jobs %}
+                        {% set job = job_data.job %}
+                        {% set application = job_data.application %}
+                        {% set is_favorited = job_data.is_favorited %}
+                        
+                        <div class="col-lg-6 col-xl-4 mb-4">
+                            <div class="card job-card h-100" data-job-id="{{ job.id }}">
+                                <div class="card-header d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h5 class="card-title mb-1">
+                                            <a href="{{ url_for('job_detail', job_id=job.id) }}" class="text-decoration-none">
+                                                {{ job.title }}
+                                            </a>
+                                        </h5>
+                                        <h6 class="text-muted mb-0">{{ job.company }}</h6>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ job.job_url }}" target="_blank">
+                                                <i class="fas fa-external-link-alt"></i> View Original
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="toggleFavorite('{{ job.id }}')">
+                                                <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
+                                                {% if is_favorited %}Remove from{% else %}Add to{% endif %} Favorites
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#" onclick="markAsApplied('{{ job.id }}')">
+                                                <i class="fas fa-check"></i> Mark as Applied
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <div class="card-body">
+                                    <!-- Location and Salary -->
+                                    <div class="mb-3">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas fa-map-marker-alt text-muted me-2"></i>
+                                            <span class="text-muted">{{ job.location or 'Location not specified' }}</span>
+                                        </div>
+                                        {% if job.salary_min or job.salary_max %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-dollar-sign text-muted me-2"></i>
+                                            <span class="text-muted">
+                                                {% if job.salary_min and job.salary_max %}
+                                                    ${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}
+                                                {% elif job.salary_min %}
+                                                    From ${{ "{:,}".format(job.salary_min) }}
+                                                {% elif job.salary_max %}
+                                                    Up to ${{ "{:,}".format(job.salary_max) }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Job Description Preview -->
+                                    <p class="card-text text-muted small">
+                                        {{ job.description[:150] }}{% if job.description|length > 150 %}...{% endif %}
+                                    </p>
+                                    
+                                    <!-- Tags -->
+                                    <div class="mb-3">
+                                        {% if job.job_type %}
+                                        <span class="badge bg-primary me-1">{{ job.job_type.value|title }}</span>
+                                        {% endif %}
+                                        {% if job.experience_level %}
+                                        <span class="badge bg-info me-1">{{ job.experience_level.value|title }}</span>
+                                        {% endif %}
+                                        {% if job.remote_type %}
+                                        <span class="badge bg-success me-1">{{ job.remote_type.value|title }}</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Application Status -->
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if application %}
+                                                <span class="badge bg-{{ get_status_color(application.status.value) }}">
+                                                    {{ application.status.value|title }}
+                                                </span>
+                                                <small class="text-muted d-block">
+                                                    Applied: {{ application.applied_date.strftime('%m/%d/%Y') }}
+                                                </small>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Not Applied</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input job-checkbox" type="checkbox" 
+                                                   value="{{ job.id }}" onchange="updateBulkActions()">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card-footer">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-primary btn-sm w-100" 
+                                                    onclick="markAsApplied('{{ job.id }}')">
+                                                <i class="fas fa-check"></i> Apply
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" 
+                                                    onclick="toggleFavorite('{{ job.id }}')">
+                                                <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
+                                                {% if is_favorited %}Favorited{% else %}Favorite{% endif %}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <nav aria-label="Job results pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('jobs_page', page=page-1, **filters) }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page }}</span>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('jobs_page', page=page+1, **filters) }}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No jobs found</h4>
+                        <p class="text-muted">Try adjusting your filters or search for new opportunities.</p>
+                        <a href="{{ url_for('search') }}" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search for Jobs
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply to Job Modal -->
+<div class="modal fade" id="applyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mark as Applied</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="applyForm">
+                    <input type="hidden" id="applyJobId">
+                    
+                    <div class="mb-3">
+                        <label for="appliedDate" class="form-label">Application Date</label>
+                        <input type="date" class="form-control" id="appliedDate" 
+                               value="{{ today }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="applicationMethod" class="form-label">Application Method</label>
+                        <select class="form-select" id="applicationMethod" required>
+                            <option value="manual">Manual Application</option>
+                            <option value="linkedin_easy_apply">LinkedIn Easy Apply</option>
+                            <option value="indeed_quick_apply">Indeed Quick Apply</option>
+                            <option value="email">Email</option>
+                            <option value="company_website">Company Website</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="applicationNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="applicationNotes" rows="3" 
+                                  placeholder="Any notes about this application..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitApplication()">
+                    <i class="fas fa-check"></i> Mark as Applied
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Apply Modal -->
+<div class="modal fade" id="bulkApplyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Apply to Jobs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bulkApplyForm">
+                    <div class="mb-3">
+                        <label for="bulkAppliedDate" class="form-label">Application Date</label>
+                        <input type="date" class="form-control" id="bulkAppliedDate" 
+                               value="{{ today }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bulkApplicationMethod" class="form-label">Application Method</label>
+                        <select class="form-select" id="bulkApplicationMethod" required>
+                            <option value="manual">Manual Application</option>
+                            <option value="linkedin_easy_apply">LinkedIn Easy Apply</option>
+                            <option value="indeed_quick_apply">Indeed Quick Apply</option>
+                            <option value="email">Email</option>
+                            <option value="company_website">Company Website</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bulkApplicationNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="bulkApplicationNotes" rows="3" 
+                                  placeholder="Notes that will apply to all selected jobs..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        This will mark <span id="bulkJobCount">0</span> jobs as applied.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitBulkApply()">
+                    <i class="fas fa-check"></i> Apply to All Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedJobs = new Set();
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('appliedDate').value = today;
+    document.getElementById('bulkAppliedDate').value = today;
+});
+
+// Filter functions
+function clearFilters() {
+    window.location.href = "{{ url_for('jobs_page') }}";
+}
+
+// View toggle functions
+function toggleView(view) {
+    const cards = document.getElementById('jobCards');
+    if (view === 'list') {
+        cards.classList.remove('row');
+        cards.classList.add('list-view');
+    } else {
+        cards.classList.remove('list-view');
+        cards.classList.add('row');
+    }
+}
+
+// Bulk actions
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    selectedJobs = new Set(Array.from(checkboxes).map(cb => cb.value));
+    
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (selectedJobs.size > 0) {
+        bulkActions.style.display = 'block';
+        selectedCount.textContent = selectedJobs.size;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+}
+
+function bulkApply() {
+    const modal = new bootstrap.Modal(document.getElementById('bulkApplyModal'));
+    document.getElementById('bulkJobCount').textContent = selectedJobs.size;
+    modal.show();
+}
+
+function bulkFavorite() {
+    const jobIds = Array.from(selectedJobs);
+    jobIds.forEach(jobId => {
+        toggleFavorite(jobId, false);
+    });
+    
+    // Clear selection
+    selectedJobs.clear();
+    document.querySelectorAll('.job-checkbox').forEach(cb => cb.checked = false);
+    updateBulkActions();
+}
+
+// Application functions
+function markAsApplied(jobId) {
+    document.getElementById('applyJobId').value = jobId;
+    const modal = new bootstrap.Modal(document.getElementById('applyModal'));
+    modal.show();
+}
+
+function submitApplication() {
+    const jobId = document.getElementById('applyJobId').value;
+    const appliedDate = document.getElementById('appliedDate').value;
+    const applicationMethod = document.getElementById('applicationMethod').value;
+    const notes = document.getElementById('applicationNotes').value;
+    
+    fetch('/api/jobs/apply', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_id: jobId,
+            applied_date: appliedDate,
+            application_method: applicationMethod,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Reload page to update status
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to record application');
+    });
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('applyModal')).hide();
+}
+
+function submitBulkApply() {
+    const jobIds = Array.from(selectedJobs);
+    const appliedDate = document.getElementById('bulkAppliedDate').value;
+    const applicationMethod = document.getElementById('bulkApplicationMethod').value;
+    const notes = document.getElementById('bulkApplicationNotes').value;
+    
+    fetch('/api/jobs/bulk-apply', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_ids: jobIds,
+            applied_date: appliedDate,
+            application_method: applicationMethod,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Reload page to update status
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to process bulk applications');
+    });
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('bulkApplyModal')).hide();
+}
+
+// Favorite functions
+function toggleFavorite(jobId, showAlert = true) {
+    fetch('/api/jobs/favorite', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            job_id: jobId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (showAlert) {
+                showAlert('success', data.message);
+            }
+            // Update UI
+            const jobCard = document.querySelector(`[data-job-id="${jobId}"]`);
+            const favoriteBtn = jobCard.querySelector('.btn-outline-secondary');
+            const starIcon = favoriteBtn.querySelector('.fas.fa-star');
+            
+            if (data.is_favorited) {
+                starIcon.classList.add('text-warning');
+                favoriteBtn.innerHTML = '<i class="fas fa-star text-warning"></i> Favorited';
+            } else {
+                starIcon.classList.remove('text-warning');
+                favoriteBtn.innerHTML = '<i class="fas fa-star"></i> Favorite';
+            }
+        } else {
+            if (showAlert) {
+                showAlert('error', data.error);
+            }
+        }
+    })
+    .catch(error => {
+        if (showAlert) {
+            showAlert('error', 'Failed to update favorite status');
+        }
+    });
+}
+
+// Utility functions
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.job-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.list-view .col-lg-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+.list-view .job-card {
+    margin-bottom: 1rem;
+}
+
+.badge.bg-applied { background-color: #28a745; }
+.badge.bg-interviewing { background-color: #ffc107; }
+.badge.bg-offered { background-color: #17a2b8; }
+.badge.bg-rejected { background-color: #dc3545; }
+.badge.bg-withdrawn { background-color: #6c757d; }
+.badge.bg-accepted { background-color: #198754; }
+</style>
+{% endblock %} 

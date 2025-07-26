@@ -1,0 +1,48 @@
+# Core dependencies for foundation
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Data management
+pandas==2.1.3
+
+# Google Sheets API
+google-api-python-client==2.108.0
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# AI and Google Gemini integration
+google-generativeai==0.3.2
+
+# Configuration and utilities
+pyyaml==6.0.1
+python-dotenv==1.0.0
+
+# Logging and monitoring
+colorlog==6.8.0
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Development tools
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+
+# Additional utilities
+fake-useragent==1.4.0
+
+# Web framework for frontend
+flask==2.3.3
+flask-session==0.5.0
+
+# Resume processing dependencies
+PyPDF2==3.0.1
+python-docx==0.8.11
+werkzeug>=2.0.0
+
+# Note: Web automation dependencies removed as the new system focuses on
+# user-provided job links rather than automated scraping 

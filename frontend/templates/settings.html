@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Job Qualification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">System Settings</h1>
+                <p class="text-muted mb-0">Configure Google Sheets integration and general settings</p>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                    <i class="fas fa-save me-1"></i> Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form id="settings-form" method="POST" action="{{ url_for('update_settings') }}">
+
+            <!-- Resume Upload Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Resume Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="section-description">
+                        Upload your resume for better job matching. It will be processed automatically when you search for jobs.
+                    </p>
+                    
+                    <div class="resume-upload-area mb-3">
+                        <input type="file" id="resume-upload" accept=".pdf,.docx" style="display: none;">
+                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('resume-upload').click()">
+                            <i class="fas fa-upload me-1"></i> Choose Resume File
+                        </button>
+                        <span id="selected-file" class="ms-2 text-muted">No file selected</span>
+                        <button type="button" id="upload-btn" class="btn btn-primary ms-2" onclick="uploadResume()" disabled>
+                            <i class="fas fa-upload me-1"></i> Upload Resume
+                        </button>
+                    </div>
+                    
+                    <div id="resume-status" class="resume-status">
+                        <!-- Will be populated with current resume status -->
+                    </div>
+                    
+                    <div class="file-requirements">
+                        <small class="text-muted">
+                            <strong>Supported formats:</strong> PDF, DOCX<br>
+                            <strong>Max file size:</strong> 10MB<br>
+                            <strong>Processing:</strong> Your resume will be processed when you search for jobs
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Sheets Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Google Sheets Integration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="google_sheets_id" class="form-label">Google Sheets ID</label>
+                            <input type="text" class="form-control" id="google_sheets_id" name="google_sheets_id" 
+                                   value="{{ api_settings.google_sheets_spreadsheet_id if api_settings else '' }}" 
+                                   placeholder="1JRbxQYOWlVLuSgv4uhfM2ljfiiBydYsD6fj_0geYRQk">
+                            <div class="form-text">
+                                The ID from your Google Sheets URL (the long string between /d/ and /edit)
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="google_sheets_worksheet" class="form-label">Worksheet Name</label>
+                            <input type="text" class="form-control" id="google_sheets_worksheet" name="google_sheets_worksheet" 
+                                   value="{{ api_settings.google_sheets_worksheet_name if api_settings else 'Qualified Jobs' }}" 
+                                   placeholder="Qualified Jobs">
+                            <div class="form-text">Name of the worksheet to save results</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Google Sheets Setup</h6>
+                        <ol class="mb-0">
+                            <li>Create a new Google Sheet</li>
+                            <li>Share it with your service account email</li>
+                            <li>Copy the spreadsheet ID from the URL</li>
+                            <li>Paste it in the field above</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Current Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Current Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Resume Status</h6>
+                    <div id="resume-status-summary">
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-spinner fa-spin me-1"></i>Loading...
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Google Sheets</h6>
+                    {% if api_settings and api_settings.google_sheets_spreadsheet_id %}
+                        <p class="text-success mb-1">
+                            <i class="fas fa-check-circle me-1"></i>Sheets ID configured
+                        </p>
+                        <p class="text-muted small mb-0">Worksheet: {{ api_settings.google_sheets_worksheet_name }}</p>
+                    {% else %}
+                        <p class="text-warning mb-0">
+                            <i class="fas fa-exclamation-triangle me-1"></i>No Sheets ID configured
+                        </p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <h6>System Status</h6>
+                    <p class="text-success mb-0">
+                        <i class="fas fa-check-circle me-1"></i>System ready
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Help & Support
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Getting Started</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1">
+                            <a href="https://console.cloud.google.com/" target="_blank">
+                                Google Cloud Console
+                            </a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="https://developers.google.com/sheets/api" target="_blank">
+                                Google Sheets API Docs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h6>Features</h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-1"></i>LinkedIn job extraction
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-1"></i>Google Sheets integration
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-1"></i>Job qualification analysis
+                        </li>
+                        <li class="mb-1">
+                            <i class="fas fa-check text-success me-1"></i>Advanced filtering options
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function saveSettings() {
+    const form = $('#settings-form');
+    const submitBtn = $('button[onclick="saveSettings()"]');
+    
+    // Show loading state
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+    
+    // Submit form
+    form.submit();
+}
+
+function uploadResume() {
+    const fileInput = document.getElementById('resume-upload');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showAlert('Please select a file first', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('resume', file);
+    
+    // Show upload progress
+    const uploadBtn = document.getElementById('upload-btn');
+    uploadBtn.textContent = 'Uploading...';
+    uploadBtn.disabled = true;
+    
+    fetch('/resume/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            loadResumeStatus(); // Refresh status display
+        } else {
+            showAlert('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('Upload failed: ' + error, 'error');
+    })
+    .finally(() => {
+        uploadBtn.textContent = 'Upload Resume';
+        uploadBtn.disabled = false;
+        fileInput.value = ''; // Clear file input
+        document.getElementById('selected-file').textContent = 'No file selected';
+    });
+}
+
+function loadResumeStatus() {
+    fetch('/resume/status')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('resume-status');
+        const summaryDiv = document.getElementById('resume-status-summary');
+        
+        if (data.has_resume) {
+            summaryDiv.innerHTML = `
+                <p class="text-success mb-1">
+                    <i class="fas fa-check-circle me-1"></i>Resume uploaded
+                </p>
+                <p class="text-muted small mb-0">${data.filename}</p>
+            `;
+            
+            statusDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Resume Details</h6>
+                    <p class="mb-1"><strong>File:</strong> ${data.filename}</p>
+                    <p class="mb-1"><strong>Type:</strong> ${data.file_type.toUpperCase()}</p>
+                    <p class="mb-1"><strong>Size:</strong> ${(data.file_size / 1024).toFixed(1)} KB</p>
+                    <p class="mb-1"><strong>Uploaded:</strong> ${new Date(data.uploaded_at).toLocaleDateString()}</p>
+                    ${data.is_processed ? 
+                        `<p class="mb-1 text-success"><strong>Status:</strong> Processed</p>` :
+                        `<p class="mb-1 text-warning"><strong>Status:</strong> Will be processed when you search for jobs</p>`
+                    }
+                </div>
+            `;
+        } else {
+            summaryDiv.innerHTML = `
+                <p class="text-warning mb-0">
+                    <i class="fas fa-exclamation-triangle me-1"></i>No resume uploaded
+                </p>
+            `;
+            
+            statusDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-info-circle me-2"></i>No Resume</h6>
+                    <p class="mb-0">Upload a resume to get better job matching results.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading resume status:', error);
+        document.getElementById('resume-status-summary').innerHTML = `
+            <p class="text-danger mb-0">
+                <i class="fas fa-exclamation-triangle me-1"></i>Error loading status
+            </p>
+        `;
+    });
+}
+
+// Enable upload button when file is selected
+document.getElementById('resume-upload').addEventListener('change', function() {
+    const fileName = this.files[0] ? this.files[0].name : 'No file selected';
+    document.getElementById('selected-file').textContent = fileName;
+    document.getElementById('upload-btn').disabled = !this.files[0];
+});
+
+// Load resume status when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadResumeStatus();
+});
+</script>
+{% endblock %} 
