@@ -201,3 +201,5 @@ scraping_sessions.db
 # Cursor
 .cursorrules
 
+# Sessions
+sessions/
