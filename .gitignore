@@ -196,3 +196,6 @@ playwright/
 applications.db
 job_listings.db
 scraping_sessions.db 
+
+# Cursor
+.cursorrules
