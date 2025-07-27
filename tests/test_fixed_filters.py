@@ -14,7 +14,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.config.config_manager import ConfigurationManager
 from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_fixed import FixedLinkedInScraper
+from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
 from src.scrapers.base_scraper import ScrapingConfig
 
 def test_fixed_filters():
@@ -52,7 +52,7 @@ def test_fixed_filters():
     scraping_config.linkedin_password = linkedin_config.password
     
     # Initialize fixed scraper
-    scraper = FixedLinkedInScraper(scraping_config, session_manager)
+    scraper = EnhancedLinkedInScraper(scraping_config, session_manager)
     
     try:
         print("\n🚀 Starting fixed filter test...")

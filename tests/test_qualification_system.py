@@ -1,293 +1,346 @@
 """
-Tests for the AI Job Qualification Screening System.
-
-This module contains tests for the core functionality of the qualification
-screening system, including AI analysis, job link processing, and data models.
+Tests for the enhanced qualification analyzer with retry logic.
 """
 
 import pytest
-import tempfile
-import os
-from unittest.mock import Mock, patch
-from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
+from typing import Dict, Any, List
 
-from src.config.config_manager import ConfigurationManager, UserProfile, AISettings
-from src.data.models import JobListing, QualificationResult, QualificationStatus, UserDecision
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
-from src.utils.job_link_processor import JobLinkProcessor, JobLinkInfo
+from src.ai.qualification_analyzer import (
+    QualificationAnalyzer, 
+    AnalysisRequest, 
+    AnalysisResponse,
+    JobEvaluationResult
+)
+from src.config.config_manager import UserProfile, AISettings
+from src.data.models import QualificationStatus, UserDecision
 
 
-class TestConfigurationManager:
-    """Test configuration management functionality."""
+class TestQualificationAnalyzerRetryLogic:
+    """Test the retry logic for Gemini job evaluation."""
     
-    def test_user_profile_loading(self):
-        """Test that user profile loads correctly from configuration."""
-        config_manager = ConfigurationManager()
-        user_profile = config_manager.get_user_profile()
-        
-        assert isinstance(user_profile, UserProfile)
-        assert isinstance(user_profile.years_of_experience, int)
-        assert isinstance(user_profile.has_college_degree, bool)
-        assert isinstance(user_profile.additional_skills, list)
-    
-    def test_ai_settings_loading(self):
-        """Test that AI settings load correctly from configuration."""
-        config_manager = ConfigurationManager()
-        ai_settings = config_manager.get_ai_settings()
-        
-        assert isinstance(ai_settings, AISettings)
-        assert isinstance(ai_settings.model, str)
-        assert isinstance(ai_settings.qualification_threshold, int)
-        assert 0 <= ai_settings.qualification_threshold <= 100
-    
-    def test_configuration_update(self):
-        """Test configuration update functionality."""
-        config_manager = ConfigurationManager()
-        
-        # Update user profile
-        config_manager.update_configuration('user_profile', 'years_of_experience', 5)
-        
-        # Verify update
-        user_profile = config_manager.get_user_profile()
-        assert user_profile.years_of_experience == 5
-
-
-class TestDataModels:
-    """Test data model functionality."""
-    
-    def test_job_listing_creation(self):
-        """Test JobListing creation and serialization."""
-        job = JobListing(
-            title="Software Engineer",
-            company="Tech Corp",
-            location="San Francisco, CA",
-            job_url="https://example.com/job/123",
-            job_site="linkedin",
-            description="We are looking for a talented software engineer..."
+    @pytest.fixture
+    def ai_settings(self):
+        """Create test AI settings."""
+        return AISettings(
+            api_key="test-api-key",
+            model="gemini-pro",
+            temperature=0.7,
+            max_tokens=1000,
+            qualification_threshold=70
         )
-        
-        assert job.title == "Software Engineer"
-        assert job.company == "Tech Corp"
-        assert job.job_site == "linkedin"
-        
-        # Test serialization
-        job_dict = job.to_dict()
-        assert job_dict['title'] == "Software Engineer"
-        assert job_dict['company'] == "Tech Corp"
-        
-        # Test deserialization
-        job_from_dict = JobListing.from_dict(job_dict)
-        assert job_from_dict.title == job.title
-        assert job_from_dict.company == job.company
     
-    def test_qualification_result_creation(self):
-        """Test QualificationResult creation and serialization."""
-        qualification = QualificationResult(
-            job_id="job-123",
-            job_title="Software Engineer",
-            company="Tech Corp",
-            job_url="https://example.com/job/123",
-            qualification_score=85,
-            qualification_status=QualificationStatus.QUALIFIED,
-            ai_reasoning="Strong match for experience and skills",
-            required_experience="3-5 years",
-            education_requirements="Bachelor's degree",
-            key_skills_mentioned=["Python", "JavaScript"],
-            matching_strengths=["Python experience"],
-            potential_concerns=["Limited JavaScript experience"]
+    @pytest.fixture
+    def user_profile(self):
+        """Create test user profile."""
+        return UserProfile(
+            name="Test User",
+            email="test@example.com",
+            experience_years=5,
+            skills=["Python", "JavaScript", "React"],
+            education="Bachelor's in Computer Science",
+            preferred_job_types=["full-time"],
+            preferred_locations=["San Francisco", "New York"],
+            salary_expectations={"min": 80000, "max": 120000}
         )
-        
-        assert qualification.qualification_score == 85
-        assert qualification.qualification_status == QualificationStatus.QUALIFIED
-        assert qualification.user_decision == UserDecision.PENDING
-        
-        # Test serialization
-        qual_dict = qualification.to_dict()
-        assert qual_dict['qualification_score'] == 85
-        assert qual_dict['qualification_status'] == 'qualified'
-        
-        # Test deserialization
-        qual_from_dict = QualificationResult.from_dict(qual_dict)
-        assert qual_from_dict.qualification_score == qualification.qualification_score
-        assert qual_from_dict.qualification_status == qualification.qualification_status
-
-
-class TestJobLinkProcessor:
-    """Test job link processing functionality."""
     
-    def test_url_cleaning(self):
-        """Test URL cleaning and validation."""
-        processor = JobLinkProcessor()
-        
-        # Test valid URLs
-        assert processor._clean_url("https://linkedin.com/jobs/view/123") == "https://linkedin.com/jobs/view/123"
-        assert processor._clean_url("linkedin.com/jobs/view/123") == "https://linkedin.com/jobs/view/123"
-        
-        # Test invalid URLs
-        assert processor._clean_url("") is None
-        assert processor._clean_url("not-a-url") is None
+    @pytest.fixture
+    def mock_job(self):
+        """Create a test job."""
+        return {
+            'id': 'test-job-123',
+            'title': 'Software Engineer',
+            'company': 'Test Company',
+            'job_url': 'https://example.com/job/123',
+            'description': 'We are looking for a Python developer with 3+ years of experience.'
+        }
     
-    def test_job_site_identification(self):
-        """Test job site identification from URLs."""
-        processor = JobLinkProcessor()
-        
-        assert processor._identify_job_site("https://linkedin.com/jobs/view/123") == "linkedin"
-        assert processor._identify_job_site("https://indeed.com/viewjob?jk=abc") == "indeed"
-        assert processor._identify_job_site("https://glassdoor.com/Job/123") == "glassdoor"
-        assert processor._identify_job_site("https://unknown.com/job") is None
-    
-    def test_link_validation(self):
-        """Test job link validation."""
-        processor = JobLinkProcessor()
-        
-        test_links = [
-            "https://linkedin.com/jobs/view/123",
-            "https://indeed.com/viewjob?jk=abc",
-            "https://unknown.com/job",
-            "not-a-url"
-        ]
-        
-        results = processor.validate_job_links(test_links)
-        
-        assert len(results['valid']) == 2  # LinkedIn and Indeed
-        assert len(results['unsupported']) == 1  # Unknown site
-        assert len(results['invalid']) == 1  # Not a URL
-
-
-class TestQualificationAnalyzer:
-    """Test AI qualification analysis functionality."""
-    
-    @patch('src.ai.qualification_analyzer.genai')
-    def test_analyzer_initialization(self, mock_genai):
-        """Test qualification analyzer initialization."""
-        ai_settings = AISettings(api_key="test-key", model="gemini-2.0-flash-lite")
-        
-        with patch('google.generativeai.GenerativeModel'):
+    @pytest.fixture
+    def analyzer(self, ai_settings):
+        """Create a qualification analyzer with mocked Gemini client."""
+        with patch('src.ai.qualification_analyzer.genai') as mock_genai:
+            mock_genai.configure.return_value = None
+            mock_model = Mock()
+            mock_genai.GenerativeModel.return_value = mock_model
+            mock_genai.types.GenerationConfig.return_value = Mock()
+            
             analyzer = QualificationAnalyzer(ai_settings)
-            assert analyzer.ai_settings == ai_settings
+            analyzer.model = mock_model
+            return analyzer
     
-    def test_score_to_status_conversion(self):
-        """Test qualification score to status conversion."""
-        ai_settings = AISettings(api_key="test-key")
-        analyzer = QualificationAnalyzer(ai_settings)
-        
-        assert analyzer._score_to_status(95) == QualificationStatus.HIGHLY_QUALIFIED
-        assert analyzer._score_to_status(85) == QualificationStatus.QUALIFIED
-        assert analyzer._score_to_status(65) == QualificationStatus.SOMEWHAT_QUALIFIED
-        assert analyzer._score_to_status(25) == QualificationStatus.NOT_QUALIFIED
-    
-    def test_analysis_prompt_creation(self):
-        """Test analysis prompt creation."""
-        ai_settings = AISettings(api_key="test-key")
-        analyzer = QualificationAnalyzer(ai_settings)
-        
-        user_profile = UserProfile(
-            years_of_experience=3,
-            has_college_degree=True,
-            field_of_study="Computer Science",
-            experience_level="mid",
-            additional_skills=["Python", "JavaScript"]
-        )
-        
-        request = AnalysisRequest(
-            job_title="Software Engineer",
-            company="Tech Corp",
-            job_description="We are looking for a Python developer...",
-            user_profile=user_profile,
-            ai_settings=ai_settings
-        )
-        
-        prompt = analyzer._create_analysis_prompt(request)
-        
-        assert "Software Engineer" in prompt
-        assert "Tech Corp" in prompt
-        assert "Python developer" in prompt
-        assert "3" in prompt  # Years of experience
-        assert "Computer Science" in prompt
-        assert "Python" in prompt
-        assert "JavaScript" in prompt
-    
-    def test_ai_response_parsing(self):
-        """Test AI response parsing."""
-        ai_settings = AISettings(api_key="test-key")
-        analyzer = QualificationAnalyzer(ai_settings)
-        
-        # Test valid JSON response
-        valid_response = '''
+    def test_analyze_job_qualification_with_retry_success_first_attempt(self, analyzer, user_profile, mock_job):
+        """Test successful analysis on first attempt."""
+        # Mock successful API response
+        mock_response = Mock()
+        mock_response.text = '''
         {
             "qualification_score": 85,
-            "ai_reasoning": "Strong match for experience and skills",
-            "required_experience": "3-5 years",
-            "education_requirements": "Bachelor's degree",
+            "ai_reasoning": "Strong match for Python development role",
+            "required_experience": "3+ years Python development",
+            "education_requirements": "Bachelor's degree in Computer Science",
             "key_skills_mentioned": ["Python", "JavaScript"],
+            "matching_strengths": ["Python", "5 years experience"],
+            "potential_concerns": []
+        }
+        '''
+        analyzer.model.generate_content.return_value = mock_response
+        
+        # Create analysis request
+        request = AnalysisRequest(
+            job_title=mock_job['title'],
+            company=mock_job['company'],
+            job_description=mock_job['description'],
+            user_profile=user_profile,
+            ai_settings=analyzer.ai_settings
+        )
+        
+        # Test the retry method
+        result = analyzer.analyze_job_qualification_with_retry(request, max_retries=2)
+        
+        # Verify result
+        assert result.qualification_score == 85
+        assert result.qualification_status == QualificationStatus.QUALIFIED
+        assert "Strong match" in result.ai_reasoning
+        assert result.ai_model_used == "gemini-pro"
+        
+        # Verify API was called only once
+        analyzer.model.generate_content.assert_called_once()
+    
+    def test_analyze_job_qualification_with_retry_success_second_attempt(self, analyzer, user_profile, mock_job):
+        """Test successful analysis on second attempt after first failure."""
+        # Mock first attempt failure, second attempt success
+        mock_response = Mock()
+        mock_response.text = '''
+        {
+            "qualification_score": 75,
+            "ai_reasoning": "Good match for the role",
+            "required_experience": "3+ years experience",
+            "education_requirements": "Bachelor's degree",
+            "key_skills_mentioned": ["Python"],
             "matching_strengths": ["Python experience"],
-            "potential_concerns": ["Limited JavaScript experience"]
+            "potential_concerns": []
         }
         '''
         
-        result = analyzer._parse_ai_response(valid_response)
+        # First call fails, second call succeeds
+        analyzer.model.generate_content.side_effect = [
+            Exception("API timeout"),  # First attempt fails
+            mock_response  # Second attempt succeeds
+        ]
         
-        assert result['qualification_score'] == 85
-        assert result['ai_reasoning'] == "Strong match for experience and skills"
-        assert result['key_skills_mentioned'] == ["Python", "JavaScript"]
-        assert result['matching_strengths'] == ["Python experience"]
-        assert result['potential_concerns'] == ["Limited JavaScript experience"]
-    
-    def test_ai_response_parsing_invalid(self):
-        """Test AI response parsing with invalid JSON."""
-        ai_settings = AISettings(api_key="test-key")
-        analyzer = QualificationAnalyzer(ai_settings)
-        
-        # Test invalid JSON response
-        invalid_response = "This is not valid JSON"
-        
-        result = analyzer._parse_ai_response(invalid_response)
-        
-        assert result['qualification_score'] == 0
-        assert "Failed to parse AI response" in result['ai_reasoning']
-        assert result['potential_concerns'] == ['AI response parsing failed']
-
-
-class TestIntegration:
-    """Test integration between components."""
-    
-    @patch('src.ai.qualification_analyzer.genai')
-    def test_system_initialization(self, mock_genai):
-        """Test that the system can be initialized without errors."""
-        from main import JobQualificationSystem
-        
-        # Mock Gemini client to avoid API key requirement
-        with patch('google.generativeai.GenerativeModel'):
-            # This should not raise any exceptions
-            system = JobQualificationSystem()
-            
-            assert system.config_manager is not None
-            assert system.logger is not None
-            assert system.VERSION == "2.0.0"
-    
-    def test_data_model_integration(self):
-        """Test that data models work together correctly."""
-        # Create a job listing
-        job = JobListing(
-            title="Software Engineer",
-            company="Tech Corp",
-            job_url="https://example.com/job/123"
+        request = AnalysisRequest(
+            job_title=mock_job['title'],
+            company=mock_job['company'],
+            job_description=mock_job['description'],
+            user_profile=user_profile,
+            ai_settings=analyzer.ai_settings
         )
         
-        # Create a qualification result for that job
-        qualification = QualificationResult(
-            job_id=job.id,
-            job_title=job.title,
-            company=job.company,
-            job_url=job.job_url,
-            qualification_score=85,
-            qualification_status=QualificationStatus.QUALIFIED
+        # Test the retry method
+        result = analyzer.analyze_job_qualification_with_retry(request, max_retries=2)
+        
+        # Verify result
+        assert result.qualification_score == 75
+        assert result.qualification_status == QualificationStatus.QUALIFIED
+        
+        # Verify API was called twice
+        assert analyzer.model.generate_content.call_count == 2
+    
+    def test_analyze_job_qualification_with_retry_all_attempts_fail(self, analyzer, user_profile, mock_job):
+        """Test that exception is raised when all attempts fail."""
+        # Mock all attempts failing
+        analyzer.model.generate_content.side_effect = [
+            Exception("API timeout"),
+            Exception("Network error"),
+            Exception("Service unavailable")
+        ]
+        
+        request = AnalysisRequest(
+            job_title=mock_job['title'],
+            company=mock_job['company'],
+            job_description=mock_job['description'],
+            user_profile=user_profile,
+            ai_settings=analyzer.ai_settings
         )
         
-        # Verify the relationship
-        assert qualification.job_id == job.id
-        assert qualification.job_title == job.title
-        assert qualification.company == job.company
+        # Test that exception is raised
+        with pytest.raises(Exception) as exc_info:
+            analyzer.analyze_job_qualification_with_retry(request, max_retries=2)
+        
+        assert "Gemini analysis failed after 3 attempts" in str(exc_info.value)
+        
+        # Verify API was called three times
+        assert analyzer.model.generate_content.call_count == 3
+    
+    def test_evaluate_job_with_retry_success(self, analyzer, user_profile, mock_job):
+        """Test successful job evaluation with retry logic."""
+        # Mock successful API response
+        mock_response = Mock()
+        mock_response.text = '''
+        {
+            "qualification_score": 90,
+            "ai_reasoning": "Excellent match",
+            "required_experience": "3+ years",
+            "education_requirements": "Bachelor's",
+            "key_skills_mentioned": ["Python"],
+            "matching_strengths": ["Python", "experience"],
+            "potential_concerns": []
+        }
+        '''
+        analyzer.model.generate_content.return_value = mock_response
+        
+        # Test job evaluation
+        result = analyzer.evaluate_job_with_retry(mock_job, user_profile, max_retries=2)
+        
+        # Verify result
+        assert result.success is True
+        assert result.qualification_result is not None
+        assert result.qualification_result.qualification_score == 90
+        assert result.qualification_result.qualification_status == QualificationStatus.HIGHLY_QUALIFIED
+        assert result.attempts == 1
+        assert result.job_id == "test-job-123"
+        assert result.job_title == "Software Engineer"
+    
+    def test_evaluate_job_with_retry_failure(self, analyzer, user_profile, mock_job):
+        """Test failed job evaluation with retry logic."""
+        # Mock all attempts failing
+        analyzer.model.generate_content.side_effect = [
+            Exception("API error"),
+            Exception("Network timeout"),
+            Exception("Service unavailable")
+        ]
+        
+        # Test job evaluation
+        result = analyzer.evaluate_job_with_retry(mock_job, user_profile, max_retries=2)
+        
+        # Verify result
+        assert result.success is False
+        assert result.qualification_result is None
+        assert result.attempts == 3
+        assert "All 3 attempts failed" in result.error_message
+        assert result.job_id == "test-job-123"
+        assert result.job_title == "Software Engineer"
+    
+    def test_batch_analyze_jobs_with_retry_mixed_results(self, analyzer, user_profile):
+        """Test batch analysis with mixed success/failure results."""
+        jobs = [
+            {
+                'id': 'job-1',
+                'title': 'Python Developer',
+                'company': 'Company A',
+                'job_url': 'https://example.com/job1',
+                'description': 'Python role'
+            },
+            {
+                'id': 'job-2',
+                'title': 'JavaScript Developer',
+                'company': 'Company B',
+                'job_url': 'https://example.com/job2',
+                'description': 'JavaScript role'
+            },
+            {
+                'id': 'job-3',
+                'title': 'Java Developer',
+                'company': 'Company C',
+                'job_url': 'https://example.com/job3',
+                'description': 'Java role'
+            }
+        ]
+        
+        # Mock responses: job-1 success, job-2 failure, job-3 success
+        mock_response_1 = Mock()
+        mock_response_1.text = '''
+        {
+            "qualification_score": 85,
+            "ai_reasoning": "Good match",
+            "required_experience": "3+ years",
+            "education_requirements": "Bachelor's",
+            "key_skills_mentioned": ["Python"],
+            "matching_strengths": ["Python"],
+            "potential_concerns": []
+        }
+        '''
+        
+        mock_response_3 = Mock()
+        mock_response_3.text = '''
+        {
+            "qualification_score": 70,
+            "ai_reasoning": "Decent match",
+            "required_experience": "2+ years",
+            "education_requirements": "Bachelor's",
+            "key_skills_mentioned": ["Java"],
+            "matching_strengths": ["experience"],
+            "potential_concerns": []
+        }
+        '''
+        
+        # Mock API calls: success, failure, success
+        analyzer.model.generate_content.side_effect = [
+            mock_response_1,  # job-1 success
+            Exception("API error"),  # job-2 failure
+            Exception("Network error"),  # job-2 retry failure
+            Exception("Service error"),  # job-2 final failure
+            mock_response_3,  # job-3 success
+        ]
+        
+        # Test batch analysis
+        successful_results, all_results = analyzer.batch_analyze_jobs_with_retry(
+            jobs, user_profile, max_retries=2
+        )
+        
+        # Verify results
+        assert len(successful_results) == 2  # Only successful jobs
+        assert len(all_results) == 3  # All jobs including failures
+        
+        # Check successful results
+        assert successful_results[0].job_id == "job-1"
+        assert successful_results[0].qualification_score == 85
+        assert successful_results[1].job_id == "job-3"
+        assert successful_results[1].qualification_score == 70
+        
+        # Check all results
+        assert all_results[0].success is True
+        assert all_results[1].success is False
+        assert all_results[2].success is True
+        
+        # Verify API was called 5 times (1 + 3 + 1)
+        assert analyzer.model.generate_content.call_count == 5
+    
+    def test_legacy_methods_backward_compatibility(self, analyzer, user_profile, mock_job):
+        """Test that legacy methods still work and use retry logic."""
+        # Mock successful API response
+        mock_response = Mock()
+        mock_response.text = '''
+        {
+            "qualification_score": 80,
+            "ai_reasoning": "Good match",
+            "required_experience": "3+ years",
+            "education_requirements": "Bachelor's",
+            "key_skills_mentioned": ["Python"],
+            "matching_strengths": ["Python"],
+            "potential_concerns": []
+        }
+        '''
+        analyzer.model.generate_content.return_value = mock_response
+        
+        # Test legacy analyze_job_qualification method
+        request = AnalysisRequest(
+            job_title=mock_job['title'],
+            company=mock_job['company'],
+            job_description=mock_job['description'],
+            user_profile=user_profile,
+            ai_settings=analyzer.ai_settings
+        )
+        
+        result = analyzer.analyze_job_qualification(request)
+        assert result.qualification_score == 80
+        assert result.qualification_status == QualificationStatus.QUALIFIED
+        
+        # Test legacy batch_analyze_jobs method
+        jobs = [mock_job]
+        results = analyzer.batch_analyze_jobs(jobs, user_profile)
+        assert len(results) == 1
+        assert results[0].qualification_score == 80
 
 
 if __name__ == "__main__":

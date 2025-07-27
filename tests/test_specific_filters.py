@@ -20,7 +20,7 @@ parent_dir = Path(__file__).parent
 sys.path.insert(0, str(parent_dir))
 
 from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.linkedin_scraper import ScrapingConfig
+from src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
 from src.utils.session_manager import SessionManager
 from src.config.config_manager import ConfigurationManager
 

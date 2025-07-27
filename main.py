@@ -83,7 +83,7 @@ class JobQualificationSystem:
             logs_dir.mkdir(exist_ok=True)
             
             # Set up logging with file output
-            logger_instance = setup_logging(
+            setup_logging(
                 name="job_qualification",
                 log_level="INFO",
                 log_file="logs/job_qualification.log"

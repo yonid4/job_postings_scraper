@@ -28,7 +28,7 @@ except ImportError:
 
 # Import specific scrapers here when they are implemented
 from .example_scraper import ExampleScraper, create_example_scraper
-from .linkedin_scraper import LinkedInScraper, create_linkedin_scraper
+from .linkedin_scraper_enhanced import EnhancedLinkedInScraper, create_enhanced_linkedin_scraper
 # from .indeed_scraper import IndeedScraper
 
 __all__ = [
@@ -37,8 +37,8 @@ __all__ = [
     'ScrapingConfig',
     'ExampleScraper',
     'create_example_scraper',
-    'LinkedInScraper',
-    'create_linkedin_scraper',
+    'EnhancedLinkedInScraper',
+    'create_enhanced_linkedin_scraper',
     'sanitize_text',
     'extract_salary_range',
     'is_valid_url',

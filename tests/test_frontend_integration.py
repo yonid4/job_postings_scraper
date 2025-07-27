@@ -76,7 +76,7 @@ def simulate_frontend_request():
     # Determine scraper selection (same as backend)
     if has_custom_filters:
         print("\n✅ CUSTOM FILTERS DETECTED!")
-        print("   → Should use FixedLinkedInScraper")
+        print("   → Should use EnhancedLinkedInScraper")
         print("   → Should open browser for authentication")
         print("   → Should apply filters in LinkedIn UI")
         return True
@@ -261,18 +261,18 @@ def test_backend_integration_simulation():
             
             # Determine scraper selection
             if has_custom_filters:
-                print("\n✅ CUSTOM FILTERS DETECTED - Using FixedLinkedInScraper")
+                print("\n✅ CUSTOM FILTERS DETECTED - Using EnhancedLinkedInScraper")
                 
                 # Try to import the scraper (this is where it might fail in real execution)
                 try:
-                    from src.scrapers.linkedin_scraper_fixed import FixedLinkedInScraper
+                    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
                     from src.utils.session_manager import SessionManager
                     from src.scrapers.base_scraper import ScrapingConfig
                     
-                    print("✅ SUCCESS: All required modules imported")
-                    
-                    # Create session manager and config
+                    # Create session manager
                     session_manager = SessionManager()
+                    
+                    # Create scraping config
                     config = ScrapingConfig(
                         max_jobs_per_session=50,
                         delay_min=2.0,
@@ -284,20 +284,17 @@ def test_backend_integration_simulation():
                     )
                     
                     # Add LinkedIn credentials
-                    config.linkedin_username = "test"
-                    config.linkedin_password = "test"
+                    config.linkedin_username = "test@example.com"
+                    config.linkedin_password = "test_password"
                     
-                    print("✅ SUCCESS: SessionManager and ScrapingConfig created")
-                    
-                    # Create scraper (this should work)
-                    scraper = FixedLinkedInScraper(config, session_manager)
-                    print("✅ SUCCESS: FixedLinkedInScraper created successfully")
-                    print("✅ This means browser automation should work!")
+                    # Create the scraper
+                    scraper = EnhancedLinkedInScraper(config, session_manager)
+                    print("✅ SUCCESS: EnhancedLinkedInScraper created successfully")
                     
                     return True
                     
                 except Exception as e:
-                    print(f"❌ FAIL: Failed to create FixedLinkedInScraper: {e}")
+                    print(f"❌ FAIL: Failed to create EnhancedLinkedInScraper: {e}")
                     return False
             else:
                 print("\n✅ NO CUSTOM FILTERS - Using JobLinkProcessor")
@@ -340,7 +337,7 @@ def main():
         print("   • Frontend correctly sends filter data")
         print("   • Backend correctly processes filter data")
         print("   • Filter detection logic works for all combinations")
-        print("   • FixedLinkedInScraper can be created successfully")
+        print("   • EnhancedLinkedInScraper can be created successfully")
         print("   • Browser automation should trigger when filters are applied")
         print("\n🔍 If browser is still not opening, the issue might be:")
         print("   • LinkedIn credentials not configured")

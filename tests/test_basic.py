@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.config.config_manager import ConfigurationManager, JobCriteria, ScrapingSettings
-from src.data.models import JobListing, Application, ScrapingSession, ApplicationStatus
+from src.data.models import JobListing, JobApplication, ScrapingSession, ApplicationStatus
 from src.utils.logger import setup_logging
 
 
@@ -68,16 +68,14 @@ class TestDataModels:
     
     def test_application_creation(self):
         """Test creating an application record."""
-        application = Application(
+        application = JobApplication(
             job_id="test-job-id",
-            job_title="Software Engineer",
-            company="Tech Corp",
-            job_url="https://example.com/job/123",
+            user_id="test-user-id",
             application_url="https://example.com/apply/123",
             status=ApplicationStatus.APPLIED
         )
         
-        assert application.job_title == "Software Engineer"
+        assert application.job_id == "test-job-id"
         assert application.status == ApplicationStatus.APPLIED
         assert application.id is not None
     
@@ -91,7 +89,7 @@ class TestDataModels:
         # Set some results
         session.jobs_found = 25
         session.jobs_processed = 20
-        session.jobs_applied = 15
+        session.jobs_qualified = 15
         
         # Finish the session
         session.finish()
@@ -147,7 +145,7 @@ def test_system_imports():
     from src.config import ConfigurationManager, ConfigurationError
     
     # Test data model imports
-    from src.data import JobListing, Application, ScrapingSession
+    from src.data import JobListing, JobApplication, ScrapingSession
     
     # Test utility imports
     from src.utils import setup_logging, JobAutomationLogger

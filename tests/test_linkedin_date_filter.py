@@ -24,7 +24,7 @@ def test_linkedin_date_filter():
     
     try:
         # Import required modules
-        from src.scrapers.linkedin_scraper import LinkedInScraper, ScrapingConfig
+        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper, ScrapingConfig
         from src.config.config_manager import ConfigurationManager
         from src.utils.logger import JobAutomationLogger
         
@@ -61,7 +61,7 @@ def test_linkedin_date_filter():
         print("✓ Scraping configuration created")
         
         # Initialize LinkedIn scraper
-        scraper = LinkedInScraper(config)
+        scraper = EnhancedLinkedInScraper(config)
         scraper.username = linkedin_config.username
         scraper.password = linkedin_config.password
         print("✓ LinkedIn scraper initialized")

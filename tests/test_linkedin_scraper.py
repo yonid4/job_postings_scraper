@@ -22,12 +22,12 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
 try:
-    from src.scrapers.linkedin_scraper import LinkedInScraper
+    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
     from src.scrapers.base_scraper import ScrapingConfig
     from src.utils.logger import JobAutomationLogger
 except ImportError:
     try:
-        from scrapers.linkedin_scraper import LinkedInScraper
+        from scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
         from scrapers.base_scraper import ScrapingConfig
         from utils.logger import JobAutomationLogger
     except ImportError:
@@ -42,10 +42,10 @@ def test_linkedin_extraction_methods():
     print("Testing LinkedIn extraction methods with mock elements...")
     
     # Create test configuration
-        config = ScrapingConfig(
-            site_name="linkedin",
-            base_url="https://www.linkedin.com",
-            delay_min=2.0,
+    config = ScrapingConfig(
+        site_name="linkedin",
+        base_url="https://www.linkedin.com",
+        delay_min=2.0,
         delay_max=3.0,
         page_load_timeout=10,
         element_wait_timeout=10,
@@ -53,7 +53,7 @@ def test_linkedin_extraction_methods():
     )
     
     # Create scraper instance
-        scraper = LinkedInScraper(config)
+    scraper = EnhancedLinkedInScraper(config)
         
     # Test cases with different HTML structures
     test_cases = [
@@ -136,15 +136,15 @@ def test_validation_logic():
     """Test the validation logic for job titles and company names."""
     print("\nTesting validation logic...")
     
-        config = ScrapingConfig(
-            site_name="linkedin",
-    base_url="https://www.linkedin.com",
-    delay_min=2.0,
-    delay_max=3.0,
-    page_load_timeout=10,
-    element_wait_timeout=10
-        )
-        scraper = LinkedInScraper(config)
+    config = ScrapingConfig(
+        site_name="linkedin",
+        base_url="https://www.linkedin.com",
+        delay_min=2.0,
+        delay_max=3.0,
+        page_load_timeout=10,
+        element_wait_timeout=10
+    )
+    scraper = EnhancedLinkedInScraper(config)
         
     # Test cases for validation
     validation_tests = [
@@ -241,7 +241,7 @@ def main():
         # Cleanup
         try:
             if 'scraper' in locals():
-        scraper.cleanup()
+                scraper.cleanup()
         except:
             pass
 

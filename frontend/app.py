@@ -337,7 +337,7 @@ def analyze_jobs():
                 # Initialize enhanced LinkedIn scraper
                 from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
                 from src.utils.session_manager import SessionManager
-                from src.scrapers.linkedin_scraper import ScrapingConfig
+                from src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
                 
                 session_manager = SessionManager()
                 config = ScrapingConfig(
@@ -545,8 +545,8 @@ def handle_linkedin_captcha():
         
         logger.info("Continuing LinkedIn scraping after CAPTCHA completion")
         
-        # Initialize fixed LinkedIn scraper with authentication
-        from src.scrapers.linkedin_scraper_fixed import FixedLinkedInScraper
+        # Initialize enhanced LinkedIn scraper with authentication
+        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
         from src.utils.session_manager import SessionManager
         from src.scrapers.base_scraper import ScrapingConfig
         
@@ -569,8 +569,8 @@ def handle_linkedin_captcha():
         config.linkedin_username = linkedin_config.username
         config.linkedin_password = linkedin_config.password
         
-        # Initialize fixed scraper with authentication
-        scraper = FixedLinkedInScraper(config, session_manager)
+        # Initialize enhanced scraper with authentication
+        scraper = EnhancedLinkedInScraper(config, session_manager)
         
         try:
             # Split keywords into list
@@ -859,10 +859,10 @@ def search_linkedin_jobs():
             if job_type:
                 filter_info.append(f"job type ({job_type})")
             
-            logger.info(f"Custom filters requiring UI interaction selected: {', '.join(filter_info)} - using fixed scraper with authentication")
+            logger.info(f"Custom filters requiring UI interaction selected: {', '.join(filter_info)} - using enhanced scraper with authentication")
             
-            # Initialize fixed LinkedIn scraper (supports all filters with proper clicking)
-            from src.scrapers.linkedin_scraper_fixed import FixedLinkedInScraper
+            # Initialize enhanced LinkedIn scraper (supports all filters with proper clicking)
+            from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
             from src.utils.session_manager import SessionManager
             from src.scrapers.base_scraper import ScrapingConfig
             
@@ -885,8 +885,8 @@ def search_linkedin_jobs():
             config.linkedin_username = linkedin_config.username
             config.linkedin_password = linkedin_config.password
             
-            # Initialize fixed scraper with authentication
-            scraper = FixedLinkedInScraper(config, session_manager)
+            # Initialize enhanced scraper with authentication
+            scraper = EnhancedLinkedInScraper(config, session_manager)
             
             try:
                 # Split keywords into list

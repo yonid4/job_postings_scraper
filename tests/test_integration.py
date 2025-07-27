@@ -14,7 +14,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.config.config_manager import ConfigurationManager
 from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_fixed import FixedLinkedInScraper
+from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
 from src.scrapers.base_scraper import ScrapingConfig
 
 def test_filter_detection_logic():
@@ -204,11 +204,11 @@ def test_fixed_scraper_creation():
         config.linkedin_password = linkedin_config.password
         
         # Create fixed scraper
-        scraper = FixedLinkedInScraper(config, session_manager)
+        scraper = EnhancedLinkedInScraper(config, session_manager)
         
         print("✅ Fixed LinkedIn scraper created successfully")
         print(f"   Scraper type: {type(scraper).__name__}")
-        print(f"   Inherits from EnhancedLinkedInScraper: {isinstance(scraper, FixedLinkedInScraper)}")
+        print(f"   Inherits from EnhancedLinkedInScraper: {isinstance(scraper, EnhancedLinkedInScraper)}")
         
         # Test that it has the required methods
         required_methods = [

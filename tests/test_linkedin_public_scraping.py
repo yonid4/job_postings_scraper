@@ -13,7 +13,7 @@ sys.path.insert(0, str(parent_dir))
 
 from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
 from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper import ScrapingConfig
+from src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
 from src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()

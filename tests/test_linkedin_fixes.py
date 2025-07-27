@@ -19,13 +19,13 @@ else:
 sys.path.insert(0, src_path)
 
 try:
-    from scrapers.linkedin_scraper import LinkedInScraper
+    from scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
     from scrapers.base_scraper import ScrapingConfig
     from utils.logger import JobAutomationLogger
 except ImportError:
     # Fallback for src imports
     try:
-        from src.scrapers.linkedin_scraper import LinkedInScraper
+        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
         from src.scrapers.base_scraper import ScrapingConfig
         from src.utils.logger import JobAutomationLogger
     except ImportError:
@@ -55,7 +55,7 @@ def test_linkedin_scraper_fixes():
     )
     
     # Create scraper instance
-    scraper = LinkedInScraper(config)
+    scraper = EnhancedLinkedInScraper(config)
     
     try:
         # Test the new robust extraction methods
