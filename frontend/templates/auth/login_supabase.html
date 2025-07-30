@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Job Automation System{% endblock %}
+
+{% block head %}
+<style>
+.login-container {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.form-floating {
+    margin-bottom: 1rem;
+}
+
+.loading-spinner {
+    display: none;
+}
+
+.loading .loading-spinner {
+    display: inline-block;
+}
+
+.loading .btn-text {
+    display: none;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    border-radius: 16px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px 16px 0 0 !important;
+    border: none;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: #495057;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-header text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-sign-in-alt me-2"></i>Welcome Back
+                    </h4>
+                    <p class="mb-0 mt-2 opacity-75">Sign in to your account</p>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Alert Container -->
+                    <div id="alertContainer"></div>
+
+                    <!-- Login Form -->
+                    <form id="loginForm" novalidate>
+                        <div class="form-floating mb-3">
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   placeholder="Email Address" required>
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-2"></i>Email Address
+                            </label>
+                            <div class="invalid-feedback" id="emailError"></div>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Password" required>
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>Password
+                            </label>
+                            <button type="button" class="password-toggle" id="passwordToggle">
+                                <i class="fas fa-eye" id="passwordIcon"></i>
+                            </button>
+                            <div class="invalid-feedback" id="passwordError"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="rememberMe">
+                                <label class="form-check-label" for="rememberMe">
+                                    Remember me
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <span class="loading-spinner">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                </span>
+                                <span class="btn-text">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="mb-2">
+                            <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none">
+                                <i class="fas fa-key me-1"></i>Forgot Password?
+                            </a>
+                        </p>
+                        <p class="mb-0">
+                            Don't have an account? 
+                            <a href="{{ url_for('auth.register_supabase') }}" class="text-decoration-none">
+                                <i class="fas fa-user-plus me-1"></i>Register here
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Wait for Supabase script to load with better timing
+function waitForSupabase() {
+    return new Promise((resolve, reject) => {
+        // If already available, resolve immediately
+        if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+            console.log('Supabase already available');
+            resolve();
+            return;
+        }
+        
+        let attempts = 0;
+        const maxAttempts = 100; // 10 seconds max
+        
+        const checkSupabase = () => {
+            attempts++;
+            console.log(`Checking for Supabase client... (attempt ${attempts})`);
+            console.log('window.supabase type:', typeof window.supabase);
+            console.log('window.supabase.createClient type:', typeof window.supabase?.createClient);
+            
+            if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+                console.log('Supabase client found and ready!');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                reject(new Error('Supabase client failed to load after 10 seconds'));
+            } else {
+                setTimeout(checkSupabase, 100);
+            }
+        };
+        
+        // Start checking after a short delay to allow script to load
+        setTimeout(checkSupabase, 100);
+    });
+}
+
+// Supabase configuration is now handled in the extra_js block
+
+// Form elements
+const form = document.getElementById('loginForm');
+const submitBtn = document.getElementById('submitBtn');
+const alertContainer = document.getElementById('alertContainer');
+const passwordToggle = document.getElementById('passwordToggle');
+const passwordIcon = document.getElementById('passwordIcon');
+const passwordField = document.getElementById('password');
+
+// Form fields
+const emailField = document.getElementById('email');
+const rememberMeCheckbox = document.getElementById('rememberMe');
+
+// Validation state
+let isSubmitting = false;
+
+// Utility functions
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertContainer.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function clearAlerts() {
+    alertContainer.innerHTML = '';
+}
+
+function setFieldError(field, message) {
+    field.classList.add('is-invalid');
+    const errorElement = document.getElementById(field.id + 'Error');
+    if (errorElement) {
+        errorElement.textContent = message;
+    }
+}
+
+function clearFieldError(field) {
+    field.classList.remove('is-invalid');
+    const errorElement = document.getElementById(field.id + 'Error');
+    if (errorElement) {
+        errorElement.textContent = '';
+    }
+}
+
+function validateForm() {
+    let isValid = true;
+    
+    // Clear previous errors
+    [emailField, passwordField].forEach(clearFieldError);
+    
+    // Validate email
+    const email = emailField.value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+        setFieldError(emailField, 'Email is required');
+        isValid = false;
+    } else if (!emailRegex.test(email)) {
+        setFieldError(emailField, 'Please enter a valid email address');
+        isValid = false;
+    }
+    
+    // Validate password
+    const password = passwordField.value;
+    if (!password) {
+        setFieldError(passwordField, 'Password is required');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+async function loginUser(userData) {
+    // Wait for Supabase to load if not already loaded
+    if (!supabase) {
+        try {
+            await waitForSupabase();
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized for login');
+        } catch (error) {
+            console.error('Failed to load Supabase client:', error);
+            return { 
+                success: false, 
+                error: { message: 'Supabase client not loaded. Please refresh the page.' }
+            };
+        }
+    }
+    
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: userData.email,
+            password: userData.password
+        });
+        
+        if (error) {
+            throw error;
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error };
+    }
+}
+
+function setLoadingState(loading) {
+    isSubmitting = loading;
+    submitBtn.disabled = loading;
+    
+    if (loading) {
+        submitBtn.classList.add('loading');
+    } else {
+        submitBtn.classList.remove('loading');
+    }
+}
+
+// Password toggle functionality
+passwordToggle.addEventListener('click', function() {
+    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordField.setAttribute('type', type);
+    
+    const icon = type === 'password' ? 'fa-eye' : 'fa-eye-slash';
+    passwordIcon.className = `fas ${icon}`;
+});
+
+// Event listeners
+[emailField, passwordField].forEach(field => {
+    field.addEventListener('input', function() {
+        if (this.value) {
+            clearFieldError(this);
+        }
+    });
+});
+
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+        return;
+    }
+    
+    if (isSubmitting) {
+        return;
+    }
+    
+    setLoadingState(true);
+    clearAlerts();
+    
+    const userData = {
+        email: emailField.value.trim(),
+        password: passwordField.value
+    };
+    
+    try {
+        const result = await loginUser(userData);
+        
+        if (result.success) {
+            // Store user data in localStorage for server-side access
+            localStorage.setItem('supabase_session', JSON.stringify(result.data.session));
+            
+            // Set server-side session
+            try {
+                const sessionResponse = await fetch('{{ url_for("auth.set_session") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session: result.data.session
+                    })
+                });
+                
+                const sessionResult = await sessionResponse.json();
+                
+                if (sessionResult.success) {
+                    showAlert(`
+                        <strong>Login Successful!</strong><br>
+                        Welcome back! Redirecting to dashboard...
+                    `, 'success');
+                    
+                    // Store remember me preference
+                    if (rememberMeCheckbox.checked) {
+                        localStorage.setItem('rememberMe', 'true');
+                    } else {
+                        localStorage.removeItem('rememberMe');
+                    }
+                    
+                    // Redirect to dashboard after 1 second
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("index") }}';
+                    }, 1000);
+                } else {
+                    showAlert(`Session setup failed: ${sessionResult.error}`, 'danger');
+                }
+            } catch (error) {
+                console.error('Session setup error:', error);
+                showAlert('Session setup failed. Please try again.', 'danger');
+            }
+            
+        } else {
+            let errorMessage = 'Login failed. Please try again.';
+            
+            if (result.error) {
+                switch (result.error.message) {
+                    case 'Invalid login credentials':
+                        errorMessage = 'Invalid email or password. Please check your credentials.';
+                        break;
+                    case 'Email not confirmed':
+                        errorMessage = 'Please verify your email address before logging in.';
+                        break;
+                    case 'Too many requests':
+                        errorMessage = 'Too many login attempts. Please try again later.';
+                        break;
+                    default:
+                        errorMessage = result.error.message || errorMessage;
+                }
+            }
+            
+            showAlert(errorMessage, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showAlert('An unexpected error occurred. Please try again.', 'danger');
+    } finally {
+        setLoadingState(false);
+    }
+});
+
+// Check for remember me preference
+document.addEventListener('DOMContentLoaded', function() {
+    const rememberMe = localStorage.getItem('rememberMe');
+    if (rememberMe === 'true') {
+        rememberMeCheckbox.checked = true;
+    }
+    
+    // Auto-focus on email field
+    emailField.focus();
+});
+
+// Handle email verification callback
+const urlParams = new URLSearchParams(window.location.search);
+const verificationStatus = urlParams.get('verification');
+
+if (verificationStatus === 'success') {
+    showAlert(`
+        <strong>Email Verified!</strong><br>
+        Your email has been successfully verified. You can now log in to your account.
+    `, 'success');
+} else if (verificationStatus === 'error') {
+    showAlert(`
+        <strong>Verification Failed</strong><br>
+        There was an error verifying your email. Please try again or contact support.
+    `, 'danger');
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Supabase JavaScript Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+
+<script>
+// Wait for Supabase script to load with better timing
+function waitForSupabase() {
+    return new Promise((resolve, reject) => {
+        // If already available, resolve immediately
+        if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+            console.log('Supabase already available');
+            resolve();
+            return;
+        }
+        
+        let attempts = 0;
+        const maxAttempts = 100; // 10 seconds max
+        
+        const checkSupabase = () => {
+            attempts++;
+            console.log(`Checking for Supabase client... (attempt ${attempts})`);
+            console.log('window.supabase type:', typeof window.supabase);
+            console.log('window.supabase.createClient type:', typeof window.supabase?.createClient);
+            
+            if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+                console.log('Supabase client found and ready!');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                reject(new Error('Supabase client failed to load after 10 seconds'));
+            } else {
+                setTimeout(checkSupabase, 100);
+            }
+        };
+        
+        // Start checking after a short delay to allow script to load
+        setTimeout(checkSupabase, 100);
+    });
+}
+
+// Supabase Configuration
+const SUPABASE_URL = '{{ config.SUPABASE_URL }}';
+const SUPABASE_ANON_KEY = '{{ config.NEXT_PUBLIC_SUPABASE_ANON_KEY }}';
+
+// Initialize Supabase client with error handling
+let supabase = null;
+
+// Debug logging
+console.log('Supabase configuration loaded:');
+console.log('URL:', SUPABASE_URL);
+console.log('Anon Key:', SUPABASE_ANON_KEY ? 'Set' : 'Missing');
+console.log('Supabase client:', supabase ? 'Available' : 'Not available');
+</script>
+{% endblock %} 

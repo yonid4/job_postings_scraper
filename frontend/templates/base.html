@@ -99,73 +99,55 @@
             transform: translateY(-2px);
         }
         
-        /* Checkbox Groups */
-        .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-top: 8px;
+        /* Auth-specific styles */
+        .user-menu {
+            position: relative;
         }
         
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            font-weight: normal;
-            cursor: pointer;
-            margin-bottom: 0;
+        .user-menu .dropdown-menu {
+            border: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 12px;
         }
         
-        .checkbox-item input[type="checkbox"] {
-            margin-right: 8px;
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
         }
         
-        /* Threshold Slider */
-        .threshold-input {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .auth-status {
+            font-size: 0.875rem;
+            color: var(--secondary-color);
         }
         
-        .threshold-value {
-            font-weight: bold;
-            min-width: 40px;
-        }
-        
-        /* Job Title Links */
-        .job-title a {
-            color: #0066cc;
-            text-decoration: none;
+        .profile-completion {
+            background: linear-gradient(90deg, var(--success-color) 0%, var(--primary-color) 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
             font-weight: 600;
         }
         
-        .job-title a:hover {
-            text-decoration: underline;
-            color: #0052a3;
-        }
-        
-        .nav-link {
-            color: var(--secondary-color);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            color: var(--primary-color);
-            background-color: rgba(37, 99, 235, 0.1);
+        .profile-incomplete {
+            background: var(--warning-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
         }
     </style>
-    
-    {% block extra_css %}{% endblock %}
+    {% block head %}{% endblock %}
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-robot me-2"></i>
-                AI Job Qualification System
+                <i class="fas fa-robot me-2"></i>Job Automation System
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -173,37 +155,93 @@
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
-                            <i class="fas fa-home me-1"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">
-                            <i class="fas fa-user me-1"></i> Profile
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}" href="{{ url_for('search') }}">
-                            <i class="fas fa-search me-1"></i> Job Search
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'jobs_page' %}active{% endif %}" href="{{ url_for('jobs_page') }}">
-                            <i class="fas fa-briefcase me-1"></i> Jobs
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'results' %}active{% endif %}" href="{{ url_for('results') }}">
-                            <i class="fas fa-chart-bar me-1"></i> Results
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">
-                            <i class="fas fa-cog me-1"></i> Settings
-                        </a>
-                    </li>
+                <ul class="navbar-nav me-auto">
+                    {% if is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('index') }}">
+                                <i class="fas fa-home me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('search') }}">
+                                <i class="fas fa-search me-1"></i>Job Search
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('jobs_page') }}">
+                                <i class="fas fa-briefcase me-1"></i>My Jobs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('applications_page') }}">
+                                <i class="fas fa-file-alt me-1"></i>Applications
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if is_authenticated %}
+                        <!-- User Menu -->
+                        <li class="nav-item dropdown user-menu">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                                <img src="{{ user_profile | user_avatar }}" alt="Avatar" class="user-avatar me-2">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-semibold">{{ user_profile | user_display_name }}</span>
+                                    <span class="auth-status">
+                                        {% if email_verified %}
+                                            <i class="fas fa-check-circle text-success me-1"></i>Verified
+                                        {% else %}
+                                            <i class="fas fa-exclamation-triangle text-warning me-1"></i>Unverified
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <div class="dropdown-item-text">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Profile Completion</span>
+                                            {% if profile_completed %}
+                                                <span class="profile-completion">Complete</span>
+                                            {% else %}
+                                                <span class="profile-incomplete">Incomplete</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('profile') }}">
+                                        <i class="fas fa-user me-2"></i>My Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('settings') }}">
+                                        <i class="fas fa-cog me-2"></i>Settings
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <!-- Guest Menu -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login_supabase') }}">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-primary text-white ms-2" href="{{ url_for('auth.register_supabase') }}">
+                                <i class="fas fa-user-plus me-1"></i>Register
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -248,14 +286,14 @@
             var script = document.createElement('script');
             script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
             script.onload = function() {
-                console.log('jQuery loaded successfully from CDN');
+                // jQuery loaded successfully from CDN
             };
             script.onerror = function() {
-                console.log('jQuery CDN failed, trying local fallback...');
+                // jQuery CDN failed, trying local fallback...
                 var fallbackScript = document.createElement('script');
                 fallbackScript.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js';
                 fallbackScript.onload = function() {
-                    console.log('jQuery loaded from Google CDN fallback');
+                    // jQuery loaded from Google CDN fallback
                 };
                 fallbackScript.onerror = function() {
                     console.error('jQuery failed to load from all sources');
@@ -301,6 +339,8 @@
             if (score >= 40) return 'Fair Match';
             return 'Poor Match';
         }
+        
+        // Auth utilities can be added here as needed
     </script>
     
     {% block extra_js %}{% endblock %}

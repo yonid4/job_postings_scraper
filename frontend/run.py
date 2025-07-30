@@ -8,12 +8,16 @@ This script starts the Flask web server with proper configuration.
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the parent directory to Python path to import src modules
 parent_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from app import app, logger
+from app_supabase import app, logger
 
 if __name__ == '__main__':
     try:

@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Job Automation System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user me-2"></i>User Profile
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('auth.profile') }}">
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">
+                                <i class="fas fa-user me-2"></i>Full Name
+                            </label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" 
+                                   value="{{ user.full_name if user else '' }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-2"></i>Email Address
+                            </label>
+                            <input type="email" class="form-control" id="email" value="{{ user.email if user else '' }}" 
+                                   readonly disabled>
+                            <div class="form-text">
+                                Email address cannot be changed. Contact support if needed.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="experience_level" class="form-label">
+                                <i class="fas fa-briefcase me-2"></i>Experience Level
+                            </label>
+                            <select class="form-select" id="experience_level" name="experience_level" required>
+                                <option value="">Select your experience level</option>
+                                <option value="internship" {{ 'selected' if user and user.experience_level == 'internship' else '' }}>Internship</option>
+                                <option value="entry_level" {{ 'selected' if user and user.experience_level == 'entry_level' else '' }}>Entry Level</option>
+                                <option value="associate" {{ 'selected' if user and user.experience_level == 'associate' else '' }}>Associate</option>
+                                <option value="mid_senior" {{ 'selected' if user and user.experience_level == 'mid_senior' else '' }}>Mid-Senior Level</option>
+                                <option value="director" {{ 'selected' if user and user.experience_level == 'director' else '' }}>Director</option>
+                                <option value="executive" {{ 'selected' if user and user.experience_level == 'executive' else '' }}>Executive</option>
+                            </select>
+                            <div class="form-text">
+                                Select your current or target experience level for job matching.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="education_level" class="form-label">
+                                <i class="fas fa-graduation-cap me-2"></i>Education Level
+                            </label>
+                            <select class="form-select" id="education_level" name="education_level" required>
+                                <option value="">Select your education level</option>
+                                <option value="high_school" {{ 'selected' if user and user.education_level == 'high_school' else '' }}>High School Diploma</option>
+                                <option value="associates" {{ 'selected' if user and user.education_level == 'associates' else '' }}>Associate's Degree</option>
+                                <option value="bachelors" {{ 'selected' if user and user.education_level == 'bachelors' else '' }}>Bachelor's Degree</option>
+                                <option value="masters" {{ 'selected' if user and user.education_level == 'masters' else '' }}>Master's Degree</option>
+                                <option value="doctoral" {{ 'selected' if user and user.education_level == 'doctoral' else '' }}>Doctoral Degree (e.g., Ph.D., Ed.D., D.B.A.)</option>
+                                <option value="professional" {{ 'selected' if user and user.education_level == 'professional' else '' }}>Professional Degree (e.g., J.D., M.D., D.D.S., Pharm.D., D.V.M.)</option>
+                                <option value="certificate" {{ 'selected' if user and user.education_level == 'certificate' else '' }}>Post-secondary Non-Degree Award / Certificate</option>
+                            </select>
+                            <div class="form-text">
+                                Select your highest level of education completed.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="work_arrangement" class="form-label">
+                                <i class="fas fa-laptop-house me-2"></i>Work Arrangement Preference
+                            </label>
+                            <select class="form-select" id="work_arrangement" name="work_arrangement" required>
+                                <option value="">Select your work arrangement preference</option>
+                                <option value="any" {{ 'selected' if user and user.work_arrangement == 'any' else '' }}>Any</option>
+                                <option value="remote" {{ 'selected' if user and user.work_arrangement == 'remote' else '' }}>Remote</option>
+                                <option value="hybrid" {{ 'selected' if user and user.work_arrangement == 'hybrid' else '' }}>Hybrid</option>
+                                <option value="on_site" {{ 'selected' if user and user.work_arrangement == 'on_site' else '' }}>On-site</option>
+                            </select>
+                            <div class="form-text">
+                                Select your preferred work arrangement for job matching.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="linkedin_credentials" class="form-label">
+                                <i class="fab fa-linkedin me-2"></i>LinkedIn Credentials (Optional)
+                            </label>
+                            <textarea class="form-control" id="linkedin_credentials" name="linkedin_credentials" 
+                                      rows="3" placeholder="Enter your LinkedIn credentials for automated applications">{{ user.linkedin_credentials if user else '' }}</textarea>
+                            <div class="form-text">
+                                Store your LinkedIn credentials for automated job applications.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-save me-2"></i>Update Profile
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Change Password Section -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-lock me-2"></i>Change Password
+                    </h5>
+                    
+                    <form method="POST" action="{{ url_for('auth.change_password') }}" id="passwordForm">
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">
+                                <i class="fas fa-key me-2"></i>Current Password
+                            </label>
+                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>New Password
+                            </label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" 
+                                   minlength="6" required>
+                            <div class="form-text">
+                                Password must be at least 6 characters long.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirm_new_password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>Confirm New Password
+                            </label>
+                            <input type="password" class="form-control" id="confirm_new_password" name="confirm_password" 
+                                   minlength="6" required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-key me-2"></i>Change Password
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Account Information -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Account Information
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>User ID:</strong> {{ user.user_id if user else 'N/A' }}</p>
+                            <p><strong>Subscription:</strong> 
+                                <span class="badge bg-{{ 'success' if user and user.subscription_status == 'premium' else 'secondary' }}">
+                                    {{ user.subscription_status if user else 'free' }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Email Verified:</strong> 
+                                <span class="badge bg-{{ 'success' if user and user.email_confirmed else 'warning' }}">
+                                    {{ 'Yes' if user and user.email_confirmed else 'No' }}
+                                </span>
+                            </p>
+                            <p><strong>Member Since:</strong> {{ user.created_at if user else 'N/A' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">
+                            <i class="fas fa-home me-1"></i>Back to Dashboard
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-danger">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordForm = document.getElementById('passwordForm');
+    const newPassword = document.getElementById('new_password');
+    const confirmNewPassword = document.getElementById('confirm_new_password');
+    
+    // Password confirmation validation
+    function validatePassword() {
+        if (newPassword.value !== confirmNewPassword.value) {
+            confirmNewPassword.setCustomValidity('Passwords do not match');
+        } else {
+            confirmNewPassword.setCustomValidity('');
+        }
+    }
+    
+    newPassword.addEventListener('change', validatePassword);
+    confirmNewPassword.addEventListener('keyup', validatePassword);
+    
+    // Password form validation
+    passwordForm.addEventListener('submit', function(e) {
+        const currentPassword = document.getElementById('current_password').value;
+        const newPasswordValue = newPassword.value;
+        const confirmNewPasswordValue = confirmNewPassword.value;
+        
+        if (!currentPassword) {
+            e.preventDefault();
+            alert('Please enter your current password.');
+            document.getElementById('current_password').focus();
+            return false;
+        }
+        
+        if (!newPasswordValue) {
+            e.preventDefault();
+            alert('Please enter a new password.');
+            newPassword.focus();
+            return false;
+        }
+        
+        if (newPasswordValue.length < 6) {
+            e.preventDefault();
+            alert('New password must be at least 6 characters long.');
+            newPassword.focus();
+            return false;
+        }
+        
+        if (newPasswordValue !== confirmNewPasswordValue) {
+            e.preventDefault();
+            alert('New passwords do not match.');
+            confirmNewPassword.focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %} 
