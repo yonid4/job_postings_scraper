@@ -148,15 +148,15 @@
                         {% set is_favorited = job_data.is_favorited %}
                         
                         <div class="col-lg-6 col-xl-4 mb-4">
-                            <div class="card job-card h-100" data-job-id="{{ job.id }}">
+                            <div class="card job-card h-100" data-job-id="{{ job.job_id }}">
                                 <div class="card-header d-flex justify-content-between align-items-start">
                                     <div class="flex-grow-1">
                                         <h5 class="card-title mb-1">
-                                            <a href="{{ url_for('job_detail', job_id=job.id) }}" class="text-decoration-none">
-                                                {{ job.title }}
+                                            <a href="{{ url_for('job_detail', job_id=job.job_id) }}" class="text-decoration-none">
+                                                {{ job.job_title }}
                                             </a>
                                         </h5>
-                                        <h6 class="text-muted mb-0">{{ job.company }}</h6>
+                                        <h6 class="text-muted mb-0">{{ job.company_name }}</h6>
                                     </div>
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
@@ -167,12 +167,12 @@
                                             <li><a class="dropdown-item" href="{{ job.job_url }}" target="_blank">
                                                 <i class="fas fa-external-link-alt"></i> View Original
                                             </a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="toggleFavorite('{{ job.id }}')">
+                                            <li><a class="dropdown-item" href="#" onclick="toggleFavorite('{{ job.job_id }}')">
                                                 <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
                                                 {% if is_favorited %}Remove from{% else %}Add to{% endif %} Favorites
                                             </a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item" href="#" onclick="markAsApplied('{{ job.id }}')">
+                                            <li><a class="dropdown-item" href="#" onclick="markAsApplied('{{ job.job_id }}')">
                                                 <i class="fas fa-check"></i> Mark as Applied
                                             </a></li>
                                         </ul>
@@ -186,37 +186,29 @@
                                             <i class="fas fa-map-marker-alt text-muted me-2"></i>
                                             <span class="text-muted">{{ job.location or 'Location not specified' }}</span>
                                         </div>
-                                        {% if job.salary_min or job.salary_max %}
+                                        {% if job.salary_range %}
                                         <div class="d-flex align-items-center">
                                             <i class="fas fa-dollar-sign text-muted me-2"></i>
-                                            <span class="text-muted">
-                                                {% if job.salary_min and job.salary_max %}
-                                                    ${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}
-                                                {% elif job.salary_min %}
-                                                    From ${{ "{:,}".format(job.salary_min) }}
-                                                {% elif job.salary_max %}
-                                                    Up to ${{ "{:,}".format(job.salary_max) }}
-                                                {% endif %}
-                                            </span>
+                                            <span class="text-muted">{{ job.salary_range }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
                                     
                                     <!-- Job Description Preview -->
                                     <p class="card-text text-muted small">
-                                        {{ job.description[:150] }}{% if job.description|length > 150 %}...{% endif %}
+                                        {{ job.job_description[:150] if job.job_description else 'No description available' }}{% if job.job_description and job.job_description|length > 150 %}...{% endif %}
                                     </p>
                                     
                                     <!-- Tags -->
                                     <div class="mb-3">
                                         {% if job.job_type %}
-                                        <span class="badge bg-primary me-1">{{ job.job_type.value|title }}</span>
+                                        <span class="badge bg-primary me-1">{{ job.job_type|title }}</span>
                                         {% endif %}
                                         {% if job.experience_level %}
-                                        <span class="badge bg-info me-1">{{ job.experience_level.value|title }}</span>
+                                        <span class="badge bg-info me-1">{{ job.experience_level|title }}</span>
                                         {% endif %}
-                                        {% if job.remote_type %}
-                                        <span class="badge bg-success me-1">{{ job.remote_type.value|title }}</span>
+                                        {% if job.work_arrangement %}
+                                        <span class="badge bg-success me-1">{{ job.work_arrangement|title }}</span>
                                         {% endif %}
                                     </div>
                                     
@@ -224,11 +216,11 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             {% if application %}
-                                                <span class="badge bg-{{ get_status_color(application.status.value) }}">
-                                                    {{ application.status.value|title }}
+                                                <span class="badge bg-{{ get_status_color(application.application_status.value) }}">
+                                                    {{ application.application_status.value|title }}
                                                 </span>
                                                 <small class="text-muted d-block">
-                                                    Applied: {{ application.applied_date.strftime('%m/%d/%Y') }}
+                                                    Applied: {{ application.applied_date.strftime('%m/%d/%Y') if application.applied_date else 'Unknown' }}
                                                 </small>
                                             {% else %}
                                                 <span class="badge bg-secondary">Not Applied</span>
@@ -236,7 +228,7 @@
                                         </div>
                                         <div class="form-check">
                                             <input class="form-check-input job-checkbox" type="checkbox" 
-                                                   value="{{ job.id }}" onchange="updateBulkActions()">
+                                                   value="{{ job.job_id }}" onchange="updateBulkActions()">
                                         </div>
                                     </div>
                                 </div>
@@ -245,13 +237,13 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <button type="button" class="btn btn-outline-primary btn-sm w-100" 
-                                                    onclick="markAsApplied('{{ job.id }}')">
+                                                    onclick="markAsApplied('{{ job.job_id }}')">
                                                 <i class="fas fa-check"></i> Apply
                                             </button>
                                         </div>
                                         <div class="col-6">
                                             <button type="button" class="btn btn-outline-secondary btn-sm w-100" 
-                                                    onclick="toggleFavorite('{{ job.id }}')">
+                                                    onclick="toggleFavorite('{{ job.job_id }}')">
                                                 <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
                                                 {% if is_favorited %}Favorited{% else %}Favorite{% endif %}
                                             </button>

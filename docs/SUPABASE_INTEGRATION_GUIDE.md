@@ -57,7 +57,7 @@ CREATE TABLE users (
 ```sql
 CREATE TABLE jobs (
     job_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     job_title TEXT NOT NULL,
     company_name TEXT NOT NULL,
     location TEXT NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE jobs (
 ```sql
 CREATE TABLE applications (
     application_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     job_id UUID REFERENCES jobs(job_id) ON DELETE CASCADE,
     application_method TEXT NOT NULL,
     applied_date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -96,8 +96,8 @@ CREATE TABLE applications (
 ```sql
 CREATE TABLE job_searches (
     search_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-    keywords TEXT NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    keywords TEXT[] NOT NULL,
     location TEXT,
     filters JSONB,
     results_count INTEGER DEFAULT 0,
@@ -110,15 +110,19 @@ CREATE TABLE job_searches (
 
 Enable RLS on all tables and add the following policies:
 
-#### Users Table
+#### User Profiles Table
 ```sql
--- Users can only read their own data
-CREATE POLICY "Users can view own data" ON users
+-- Users can only read their own profile
+CREATE POLICY "Users can view own profile" ON user_profiles
     FOR SELECT USING (auth.uid() = user_id);
 
--- Users can update their own data
-CREATE POLICY "Users can update own data" ON users
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile" ON user_profiles
     FOR UPDATE USING (auth.uid() = user_id);
+
+-- Users can insert their own profile
+CREATE POLICY "Users can insert own profile" ON user_profiles
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 ```
 
 #### Jobs Table

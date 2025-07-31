@@ -5,17 +5,28 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="h2 mb-1">Job Search & Analysis</h1>
-                <p class="text-muted mb-0">Analyze job opportunities with AI-powered qualification screening</p>
-            </div>
-            <div class="text-end">
-                <button type="button" class="btn btn-primary" onclick="analyzeJobs()">
-                    <i class="fas fa-robot me-1"></i> Analyze Jobs
-                </button>
-            </div>
-        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="h2 mb-1">Job Search & Analysis</h1>
+                        <p class="text-muted mb-0">Analyze job opportunities with AI-powered qualification screening</p>
+                        <div class="mt-2">
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-rocket me-1"></i> Optimized Search
+                            </span>
+                            <span class="badge bg-info me-2">
+                                <i class="fas fa-shield-alt me-1"></i> CAPTCHA Handling
+                            </span>
+                            <span class="badge bg-warning">
+                                <i class="fas fa-bolt me-1"></i> Fast API Mode
+                            </span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-primary" onclick="analyzeJobs()">
+                            <i class="fas fa-robot me-1"></i> Analyze Jobs
+                        </button>
+                    </div>
+                </div>
     </div>
 </div>
 
@@ -53,6 +64,26 @@
                            placeholder="e.g., Software Engineer, Data Scientist, Python Developer">
                     <div class="form-text">
                         Enter job titles, skills, or keywords you're looking for (required)
+                    </div>
+                </div>
+                
+                <!-- Search Strategy Indicator -->
+                <div id="search-strategy-indicator" class="mb-3" style="display: none;">
+                    <div class="alert alert-info" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div class="flex-grow-1">
+                                <strong>Search Strategy:</strong> <span id="strategy-method">Calculating...</span>
+                                <br>
+                                <small id="strategy-reason" class="text-muted">Determining optimal search method...</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="badge bg-primary" id="estimated-time">
+                                    <i class="fas fa-clock me-1"></i>
+                                    <span id="time-display">Calculating...</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -179,6 +210,50 @@
                                 Save qualified jobs to Google Sheets
                             </label>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Optimization Help -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Search Optimization Features
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-success">
+                            <i class="fas fa-bolt me-1"></i> Fast API Mode
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            For basic searches (keywords + location only), we use a fast API-only approach that completes in 2-5 seconds with minimal resource usage.
+                        </p>
+                        
+                        <h6 class="text-warning">
+                            <i class="fas fa-browser me-1"></i> WebDriver Mode
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            For advanced searches with filters (date, experience, job type, etc.), we use WebDriver for precise filtering, taking 10-30 seconds.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info">
+                            <i class="fas fa-shield-alt me-1"></i> CAPTCHA Handling
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            If LinkedIn requires verification, we'll pause and guide you through solving the challenge, then continue automatically.
+                        </p>
+                        
+                        <h6 class="text-primary">
+                            <i class="fas fa-rocket me-1"></i> Smart Strategy
+                        </h6>
+                        <p class="small text-muted">
+                            The system automatically chooses the optimal method based on your search complexity, ensuring the best performance.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -322,6 +397,53 @@
 <script>
 let analysisResults = [];
 
+// Function to calculate search strategy based on current form data
+function calculateSearchStrategy() {
+    const keywords = $('#keywords').val().trim();
+    const location = $('#locations').val().trim();
+    const datePosted = $('#date_posted').val();
+    const workArrangement = $('input[name="remote"]:checked').length > 0;
+    const experienceLevel = $('input[name="experience"]:checked').length > 0;
+    const jobType = $('input[name="job_type"]:checked').length > 0;
+    
+    // Check if we have basic search parameters
+    const hasBasicParams = keywords && location;
+    
+    // Check if we have advanced filters
+    const hasAdvancedFilters = datePosted && datePosted !== 'any' || workArrangement || experienceLevel || jobType;
+    
+    const strategyIndicator = $('#search-strategy-indicator');
+    const strategyMethod = $('#strategy-method');
+    const strategyReason = $('#strategy-reason');
+    
+    if (hasBasicParams) {
+        if (hasAdvancedFilters) {
+            strategyMethod.html('<span class="text-warning"><i class="fas fa-browser me-1"></i>WebDriver Mode</span>');
+            strategyReason.html('Advanced filters detected - using WebDriver for precise filtering');
+            $('#time-display').text('10-30 seconds');
+            strategyIndicator.show();
+        } else {
+            strategyMethod.html('<span class="text-success"><i class="fas fa-bolt me-1"></i>Fast API Mode</span>');
+            strategyReason.html('Basic search - using fast API-only approach');
+            $('#time-display').text('2-5 seconds');
+            strategyIndicator.show();
+        }
+    } else {
+        strategyIndicator.hide();
+    }
+}
+
+// Add event listeners to update strategy in real-time
+$(document).ready(function() {
+    // Update strategy when form fields change
+    $('#keywords, #locations, #date_posted, input[name="remote"], input[name="experience"], input[name="job_type"]').on('change input', function() {
+        calculateSearchStrategy();
+    });
+    
+    // Initial calculation
+    calculateSearchStrategy();
+});
+
 function analyzeJobs() {
     const website = $('#website-choice').val();
     const keywords = $('#keywords').val().trim();
@@ -349,10 +471,32 @@ function analyzeJobs() {
     // Show loading state
     analyzeBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Analyzing...');
     
-    // Determine which search method to use based on website
-    if (website === 'linkedin') {
-        // Use new LinkedIn search with date filtering
-        statusDiv.html('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Searching LinkedIn with date filtering...</div>');
+            // Determine which search method to use based on website
+        if (website === 'linkedin') {
+            // Calculate current search strategy
+            const hasAdvancedFilters = datePosted && datePosted !== 'any' || 
+                                    $('input[name="remote"]:checked').length > 0 || 
+                                    $('input[name="experience"]:checked').length > 0 || 
+                                    $('input[name="job_type"]:checked').length > 0;
+            
+            const isFastMode = !hasAdvancedFilters;
+            const searchMethod = isFastMode ? 'Fast API Mode' : 'WebDriver Mode';
+            const estimatedTime = isFastMode ? '2-5 seconds' : '10-30 seconds';
+            
+            // Use new LinkedIn search with strategy information
+            statusDiv.html(`
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    Searching LinkedIn jobs...
+                </div>
+                <div class="small text-muted">
+                    <strong>Search Method:</strong> ${searchMethod}<br>
+                    <strong>Estimated Time:</strong> ${estimatedTime}<br>
+                    <strong>Keywords:</strong> ${keywords}<br>
+                    <strong>Location:</strong> ${location}
+                    ${datePosted && datePosted !== 'any' ? `<br><strong>Date Filter:</strong> Past ${datePosted} days` : ''}
+                </div>
+            `);
         
         // Log the search parameters
         console.log('=== LINKEDIN SEARCH STARTED ===');
@@ -427,7 +571,40 @@ function analyzeJobs() {
                     analysisResults = response.results;
                     displayResults(response);
                     
-                    let successMessage = `Successfully found ${response.total_jobs} jobs!`;
+                    let successMessage = `Successfully found ${response.jobs_count} jobs!`;
+                    
+                    // Show strategy information if available
+                    if (response.strategy_info) {
+                        const strategy = response.strategy_info;
+                        const methodDisplay = strategy.method === 'api_only' ? 'Fast API Mode' : 'WebDriver Mode';
+                        const timeDisplay = strategy.estimated_time || (strategy.method === 'api_only' ? '2-5 seconds' : '10-30 seconds');
+                        
+                        successMessage += ` (${methodDisplay} - ${timeDisplay})`;
+                        
+                        // Log strategy details
+                        console.log('Search Strategy:', strategy);
+                        
+                        // Show detailed strategy info in status
+                        statusDiv.html(`
+                            <div class="alert alert-success" role="alert">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-check-circle fa-2x text-success me-3"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="alert-heading">Search Completed Successfully!</h6>
+                                        <p class="mb-2">Found ${response.jobs_count} jobs using ${methodDisplay}</p>
+                                        <div class="small text-muted">
+                                            <strong>Method:</strong> ${strategy.method === 'api_only' ? 'Fast API-only approach' : 'WebDriver with advanced filtering'}<br>
+                                            <strong>Performance:</strong> ${strategy.performance_impact}<br>
+                                            <strong>Reason:</strong> ${strategy.reason}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                    
                     if (response.date_filter_applied) {
                         successMessage += ` (Filtered to past ${response.date_filter_days} days)`;
                     }
@@ -435,9 +612,9 @@ function analyzeJobs() {
                 } else {
                     // Check if it's a CAPTCHA challenge
                     if (response.error === 'CAPTCHA_CHALLENGE' || response.requires_manual_intervention) {
-                        showCaptchaChallenge(formData);
-                } else {
-                    showAlert(response.error || 'LinkedIn search failed', 'error');
+                        showCaptchaChallenge(formData, response.strategy_info);
+                    } else {
+                        showAlert(response.error || 'LinkedIn search failed', 'error');
                     }
                 }
             },
@@ -532,98 +709,151 @@ function displayResults(response) {
     // Show results section
     resultsDiv.show();
     
-    // Update total jobs count in the save button
-    $('#total-jobs-count').text(response.total_jobs);
-    
-    // Display summary
-    const qualifiedCount = response.results.filter(job => job.score >= 60).length;
-    const excellentCount = response.results.filter(job => job.score >= 80).length;
-    
-    summaryDiv.html(`
-        <div class="row text-center">
-            <div class="col-md-3">
-                <div class="border rounded p-3">
-                    <h4 class="text-primary mb-1">${response.total_jobs}</h4>
-                    <small class="text-muted">Total Jobs</small>
+    // Check if this is a LinkedIn search response (has jobs_count)
+    if (response.jobs_count !== undefined) {
+        // This is a LinkedIn search response - show scraped jobs
+        summaryDiv.html(`
+            <div class="alert alert-success" role="alert">
+                <div class="d-flex align-items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle fa-2x text-success me-3"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="alert-heading">Jobs Successfully Scraped and Saved!</h6>
+                        <p class="mb-2">Found and saved ${response.jobs_count} jobs to your database.</p>
+                        <div class="mt-3">
+                            <a href="/jobs" class="btn btn-primary me-2">
+                                <i class="fas fa-briefcase me-1"></i> View All Jobs
+                            </a>
+                            <button class="btn btn-outline-primary" onclick="searchLinkedInJobs()">
+                                <i class="fas fa-search me-1"></i> Search Again
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3">
-                    <h4 class="text-success mb-1">${qualifiedCount}</h4>
-                    <small class="text-muted">Qualified (60+)</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3">
-                    <h4 class="text-success mb-1">${excellentCount}</h4>
-                    <small class="text-muted">Excellent (80+)</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3">
-                    <h4 class="text-primary mb-1">${Math.round(response.results.reduce((sum, job) => sum + job.score, 0) / response.total_jobs)}</h4>
-                    <small class="text-muted">Avg Score</small>
-                </div>
-            </div>
-        </div>
-    `);
-    
-    // Display jobs
-    let jobsHtml = '';
-    response.results.forEach((job, index) => {
-        const scoreClass = getScoreClass(job.score);
-        const scoreText = getScoreText(job.score);
+        `);
         
-        jobsHtml += `
-            <div class="card job-card mb-3">
+        // Show a simple list of scraped jobs
+        let jobsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Recently Scraped Jobs (${response.jobs_count} total)
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1">
-                                <a href="#" onclick="showJobDetails(${index})" class="text-decoration-none">${job.job_title}</a>
-                            </h6>
-                            <p class="text-muted mb-1">${job.company}</p>
-                            <small class="text-muted">${job.location}</small>
-                        </div>
-                        <div class="text-end">
-                            <span class="badge ${scoreClass} score-badge">${job.score}/100</span>
-                            <div class="small text-muted mt-1">${scoreText}</div>
-                        </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        All jobs have been automatically saved to your "My Jobs" page. 
+                        Click "View All Jobs" above to see them with full details and application tracking.
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            ${job.strengths && job.strengths.length > 0 ? `
-                                <div class="mb-2">
-                                    <small class="text-success"><strong>Strengths:</strong></small>
-                                    <div class="small text-muted">${job.strengths.slice(0, 2).join(', ')}</div>
-                                </div>
-                            ` : ''}
-                        </div>
-                        <div class="col-md-6">
-                            ${job.concerns && job.concerns.length > 0 ? `
-                                <div class="mb-2">
-                                    <small class="text-warning"><strong>Concerns:</strong></small>
-                                    <div class="small text-muted">${job.concerns.slice(0, 2).join(', ')}</div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="showJobDetails(${index})">
-                            <i class="fas fa-eye me-1"></i> View Details
-                        </button>
-                        <button class="btn btn-sm btn-success ms-1 save-single-job-btn" data-job-index="${index}" data-job-id="${job.job_url}" data-job-title="${job.job_title}">
-                            <i class="fas fa-save me-1"></i> Save This Job
-                        </button>
+                    <div class="text-center">
+                        <a href="/jobs" class="btn btn-primary">
+                            <i class="fas fa-briefcase me-1"></i> View All Jobs
+                        </a>
                     </div>
                 </div>
             </div>
         `;
-    });
-    
-    jobsListDiv.html(jobsHtml);
+        
+        jobsListDiv.html(jobsHtml);
+    } else {
+        // This is an analysis response - show analyzed jobs
+        // Update total jobs count in the save button
+        $('#total-jobs-count').text(response.total_jobs);
+        
+        // Display summary
+        const qualifiedCount = response.results.filter(job => job.score >= 60).length;
+        const excellentCount = response.results.filter(job => job.score >= 80).length;
+        
+        summaryDiv.html(`
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <h4 class="text-primary mb-1">${response.total_jobs}</h4>
+                        <small class="text-muted">Total Jobs</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <h4 class="text-success mb-1">${qualifiedCount}</h4>
+                        <small class="text-muted">Qualified (60+)</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <h4 class="text-success mb-1">${excellentCount}</h4>
+                        <small class="text-muted">Excellent (80+)</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <h4 class="text-primary mb-1">${Math.round(response.results.reduce((sum, job) => sum + job.score, 0) / response.total_jobs)}</h4>
+                        <small class="text-muted">Avg Score</small>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        // Display jobs
+        let jobsHtml = '';
+        response.results.forEach((job, index) => {
+            const scoreClass = getScoreClass(job.score);
+            const scoreText = getScoreText(job.score);
+            
+            jobsHtml += `
+                <div class="card job-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title mb-1">
+                                    <a href="#" onclick="showJobDetails(${index})" class="text-decoration-none">${job.job_title}</a>
+                                </h6>
+                                <p class="text-muted mb-1">${job.company}</p>
+                                <small class="text-muted">${job.location}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge ${scoreClass} score-badge">${job.score}/100</span>
+                                <div class="small text-muted mt-1">${scoreText}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                ${job.strengths && job.strengths.length > 0 ? `
+                                    <div class="mb-2">
+                                        <small class="text-success"><strong>Strengths:</strong></small>
+                                        <div class="small text-muted">${job.strengths.slice(0, 2).join(', ')}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="col-md-6">
+                                ${job.concerns && job.concerns.length > 0 ? `
+                                    <div class="mb-2">
+                                        <small class="text-warning"><strong>Concerns:</strong></small>
+                                        <div class="small text-muted">${job.concerns.slice(0, 2).join(', ')}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="showJobDetails(${index})">
+                                <i class="fas fa-eye me-1"></i> View Details
+                            </button>
+                            <button class="btn btn-sm btn-success ms-1 save-single-job-btn" data-job-index="${index}" data-job-id="${job.job_url}" data-job-title="${job.job_title}">
+                                <i class="fas fa-save me-1"></i> Save This Job
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        jobsListDiv.html(jobsHtml);
+    }
 }
 
 function showJobDetails(index) {
@@ -687,6 +917,15 @@ function debugJobUrl() {
     const jobTitle = $('#jobModalTitle').text();
     
     alert(`Debug Info:\n\nJob Title: ${jobTitle}\nJob URL: ${currentJobUrl}\n\nThis will help identify if the URL is being set correctly.`);
+}
+
+function searchLinkedInJobs() {
+    // Clear previous results
+    $('#analysis-results').hide();
+    
+    // Reset form and trigger search
+    $('#keywords').focus();
+    analyzeJobs();
 }
 
 function saveJobFromSearch(index) {
@@ -888,8 +1127,18 @@ function saveAllJobsFromSearch() {
 }
 
 // CAPTCHA Challenge Handler
-function showCaptchaChallenge(formData) {
+function showCaptchaChallenge(formData, strategyInfo) {
     const statusDiv = $('#analysis-status');
+    
+    // Determine strategy message
+    let strategyMessage = '';
+    if (strategyInfo) {
+        if (strategyInfo.method === 'api_only') {
+            strategyMessage = '<p class="mb-2"><small class="text-muted">Note: This search was using fast API mode, but LinkedIn requires WebDriver for verification.</small></p>';
+        } else {
+            strategyMessage = '<p class="mb-2"><small class="text-muted">Note: This search is using WebDriver mode for advanced filtering.</small></p>';
+        }
+    }
     
     // Show CAPTCHA challenge message
     statusDiv.html(`
@@ -898,21 +1147,28 @@ function showCaptchaChallenge(formData) {
                 <div class="flex-shrink-0">
                     <i class="fas fa-shield-alt fa-2x text-warning me-3"></i>
                 </div>
-                <div class="flex-grow-1">
-                    <h5 class="alert-heading">Security Verification Required</h5>
-                    <p class="mb-3">
-                        LinkedIn has detected automated access and requires manual verification. 
-                        A browser window should have opened with a security challenge.
-                    </p>
-                    <div class="mb-3">
-                        <strong>Please complete the following steps:</strong>
-                        <ol class="mb-0 mt-2">
-                            <li>Look for the browser window that opened automatically</li>
-                            <li>Complete the security challenge (CAPTCHA, puzzle, or verification)</li>
-                            <li>Wait for the page to load successfully</li>
-                            <li>Click the "Continue Analysis" button below</li>
-                        </ol>
-                    </div>
+                                    <div class="flex-grow-1">
+                        <h5 class="alert-heading">Security Verification Required</h5>
+                        <p class="mb-3">
+                            LinkedIn has detected automated access and requires manual verification. 
+                            A browser window should have opened with a security challenge.
+                        </p>
+                        ${strategyMessage}
+                        <div class="mb-3">
+                            <strong>Please complete the following steps:</strong>
+                            <ol class="mb-0 mt-2">
+                                <li>Look for the browser window that opened automatically</li>
+                                <li>Complete the security challenge (CAPTCHA, puzzle, or verification)</li>
+                                <li>Wait for the page to load successfully</li>
+                                <li>Click the "Continue Analysis" button below</li>
+                            </ol>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <small>
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Note:</strong> This is a temporary security check. Once completed, your search will continue automatically.
+                            </small>
+                        </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-primary" onclick="continueAfterCaptcha(${JSON.stringify(formData).replace(/"/g, '&quot;')})">
                             <i class="fas fa-play me-1"></i> Continue Analysis
