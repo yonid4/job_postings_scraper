@@ -56,9 +56,18 @@ from src.auth.auth_context import login_required, email_verified_required, get_u
 # Import profile routes
 from profile_routes import profile_bp
 
+# Import emergency performance modules
+from src.debug.performance_profiler import emergency_profiler
+from src.data.emergency_queries import EmergencyJobQueries
+from flask_caching import Cache
+
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-change-this')
+
+# Initialize emergency cache
+cache = Cache(config={'CACHE_TYPE': 'simple'})
+cache.init_app(app)
 
 # Configure session to use server-side storage
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -145,10 +154,32 @@ def initialize_system():
         # Initialize Google Sheets manager
         sheets_manager = GoogleSheetsManager()
         
-        # Initialize resume manager
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'resumes.db')
-        upload_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', 'resumes')
-        resume_manager = ResumeManager(db_path, upload_folder)
+        # Initialize resume manager with Supabase integration
+        try:
+            from supabase import create_client
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')  # CHANGED: Use service role key
+            
+            if supabase_url and supabase_service_key:
+                supabase_client = create_client(supabase_url, supabase_service_key)  # CHANGED: Use service key
+                resume_manager = ResumeManager(
+                    supabase_client=supabase_client,
+                    bucket_name="resumes",
+                    ai_client=qualification_analyzer
+                )
+                logger.info("ResumeManager initialized with Supabase integration (service role)")
+                
+                # Store in app config for routes to access
+                app.config['resume_manager'] = resume_manager
+                
+            else:
+                logger.error("Supabase URL or service role key not found in environment variables")
+                logger.error("Required: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+                raise Exception("Missing Supabase credentials")
+                
+        except Exception as e:
+            logger.error(f"Error initializing ResumeManager: {e}")
+            raise
         
         # Initialize job tracker
         job_db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'jobs.db')
@@ -166,18 +197,16 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-def get_user_id():
-    """Get current user ID from session or database."""
-    return get_user_id()
-
-
 # Register authentication blueprint
 from auth_routes import auth_bp
 app.register_blueprint(auth_bp)
 
 # Register profile blueprint
 app.register_blueprint(profile_bp, url_prefix='/profile')
+
+# Register resume blueprint
+from resume_routes import resume_bp
+app.register_blueprint(resume_bp)
 
 # Update existing routes to use new auth system
 @app.route('/')
@@ -271,52 +300,45 @@ def update_settings():
         flash("An error occurred while updating settings.", "error")
         return redirect(url_for('settings'))
 
-
-@app.route('/resume/upload', methods=['POST'])
-@login_required
-def upload_resume():
-    """Upload resume file."""
-    try:
-        user = get_current_user()
-        if not user:
-            return jsonify({'success': False, 'error': 'User not authenticated'})
-        
-        if 'resume' not in request.files:
-            return jsonify({'success': False, 'error': 'No file uploaded'})
-        
-        file = request.files['resume']
-        if file.filename == '':
-            return jsonify({'success': False, 'error': 'No file selected'})
-        
-        if file and allowed_file(file.filename):
-            # Handle resume upload logic here
-            return jsonify({'success': True, 'message': 'Resume uploaded successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Invalid file type'})
-            
-    except Exception as e:
-        logger.error(f"Resume upload error: {e}")
-        return jsonify({'success': False, 'error': str(e)})
-
-
 @app.route('/resume/status')
 @login_required
 def get_resume_status():
-    """Get resume processing status."""
+    """Get resume processing status using Supabase."""
     try:
+        logger.info("=== get_resume_status route called ===")
         user = get_current_user()
+        logger.info(f"User: {user}")
         if not user:
+            logger.error("No user found")
             return jsonify({'success': False, 'error': 'User not authenticated'})
         
-        # Return resume status
+        # Use the new resume manager for status
+        resume_manager = app.config.get('resume_manager')
+        logger.info(f"Resume manager: {resume_manager}")
+        if not resume_manager:
+            logger.error("Resume manager not available")
+            return jsonify({'success': False, 'error': 'Resume manager not available'})
+        
+        # Get user ID - try both 'user_id' and 'id' fields
+        user_id = user.get('user_id') or user.get('id')
+        logger.info(f"User ID: {user_id}")
+        if not user_id:
+            logger.error(f"No user ID found in user data: {user}")
+            return jsonify({'success': False, 'error': 'User ID not found'})
+        
+        logger.info(f"Calling resume_manager.get_resume_status({user_id})")
+        status = resume_manager.get_resume_status(user_id)
+        logger.info(f"Resume status result: {status}")
+        
         return jsonify({
             'success': True,
-            'has_resume': False,
-            'status': 'no_resume'
+            'status': status
         })
         
     except Exception as e:
         logger.error(f"Resume status error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)})
 
 
@@ -915,69 +937,169 @@ def continue_after_captcha():
 @app.route('/jobs')
 @login_required
 def jobs_page():
-    """
-    User's saved jobs page.
+    """Display jobs page with optimized approach - template compatible"""
+    # Initialize default values for template safety
+    jobs_data = []
+    filters = {
+        'company': request.args.get('company', ''),
+        'location': request.args.get('location', ''),
+        'title': request.args.get('title', ''),
+        'status': request.args.get('status', ''),
+        'salary_min': request.args.get('salary_min', ''),
+        'salary_max': request.args.get('salary_max', '')
+    }
     
-    GET: Display user's saved jobs
-    """
+    # Default analytics to prevent template errors
+    analytics = {
+        'total_applications': 0,
+        'response_rate': 0.0,
+        'responses_received': 0,
+        'status_counts': {
+            'interviewing': 0,
+            'applied': 0,
+            'rejected': 0,
+            'offered': 0
+        }
+    }
+    
     try:
-        current_user = get_current_user()
-        user_profile = get_user_profile()
-        
-        # Get user's saved jobs from database
+        # Get authenticated database manager
         db_manager = get_authenticated_db_manager()
         if not db_manager:
-            flash("Database not available or user not authenticated.", "error")
-            return render_template('jobs.html', user=current_user, profile=user_profile, jobs=[])
+            flash('Database connection failed', 'error')
+            return render_template('jobs.html', jobs=jobs_data, filters=filters, analytics=analytics)
         
-        # Get all jobs for the current user
-        jobs = db_manager.jobs.get_user_jobs(current_user['user_id'])
-        
-        # Get application status for each job
-        jobs_with_applications = []
-        for job in jobs:
-            application = db_manager.applications.get_application_by_job(current_user['user_id'], job.job_id)
-            jobs_with_applications.append({
-                'job': job,
-                'application': application
-            })
-        
-        # Prepare template variables
-        template_vars = {
-            'user': current_user,
-            'profile': user_profile,
-            'jobs': jobs_with_applications,
-            'filters': request.args.to_dict(),  # Get filters from URL parameters
-            'analytics': {
-                'total_applications': len([j for j in jobs_with_applications if j['application']]),
-                'response_rate': 0,  # Calculate based on your logic
-                'responses_received': 0,  # Calculate based on your logic
-                'status_counts': {}  # Calculate based on your logic
-            },
-            'page': int(request.args.get('page', 1)),
-            'today': datetime.now().strftime('%Y-%m-%d')
-        }
-        
-        return render_template('jobs.html', **template_vars)
-    except Exception as e:
-        logger.error(f"Error loading jobs page: {e}")
-        flash("An error occurred while loading your jobs.", "error")
-        
-        # Return template with empty data but all required variables
-        return render_template('jobs.html', 
-                            user=current_user, 
-                            profile=user_profile, 
-                            jobs=[],
-                            filters={},
-                            analytics={
-                                'total_applications': 0,
-                                'response_rate': 0,
-                                'responses_received': 0,
-                                'status_counts': {}
-                            },
-                            page=1,
-                            today=datetime.now().strftime('%Y-%m-%d'))
+        user_id = session.get('user_id')
+        if not user_id:
+            flash('Please log in to view jobs', 'error')
+            return redirect(url_for('auth.login'))
 
+        logger.info("Starting optimized jobs query...")
+        start_time = time.time()
+        
+        # OPTIMIZED: Get all jobs and applications in 2 queries
+        try:
+            logger.info("Attempting to use new SupabaseManager methods...")
+            jobs_data_raw = db_manager.get_all_jobs(user_id)
+            applications_data_raw = db_manager.get_applications_by_user(user_id)
+            
+            logger.info(f"New methods successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+            
+        except Exception as method_error:
+            logger.warning(f"New methods failed: {method_error}")
+            
+            # Fallback to direct client access
+            logger.info("Attempting direct client access...")
+            jobs_response = db_manager.client.table('jobs').select('*').eq(
+                'user_id', user_id
+            ).order('date_found', desc=True).execute()
+            
+            applications_response = db_manager.client.table('applications').select(
+                'job_id'
+            ).eq('user_id', user_id).execute()
+            
+            jobs_data_raw = jobs_response.data if jobs_response.data else []
+            applications_data_raw = applications_response.data if applications_response.data else []
+            
+            logger.info(f"Direct client successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+        
+        # Create lookup dictionary for application counts
+        application_counts = {}
+        for app in applications_data_raw:
+            job_id = app.get('job_id')
+            if job_id:
+                application_counts[job_id] = application_counts.get(job_id, 0) + 1
+        
+        # Process jobs - create the structure your template expects
+        for job in jobs_data_raw:
+            job_dict = dict(job) if hasattr(job, 'items') else job
+            
+            # Debug: Log the job structure to understand field names
+            logger.info(f"Job dict keys: {list(job_dict.keys())}")
+            logger.info(f"Sample job data: {job_dict}")
+            
+            # Try different possible field names for job_id
+            job_id = job_dict.get('job_id') or job_dict.get('id')
+            
+            # Try different possible field names for other fields
+            job_title = job_dict.get('job_title') or job_dict.get('title')
+            company_name = job_dict.get('company_name') or job_dict.get('company')
+            location = job_dict.get('location', '')
+            job_url = job_dict.get('job_url') or job_dict.get('url', '#')
+            job_description = job_dict.get('job_description') or job_dict.get('description', '')
+            salary_range = job_dict.get('salary_range', '')
+            job_type = job_dict.get('job_type', '')
+            experience_level = job_dict.get('experience_level', '')
+            work_arrangement = job_dict.get('work_arrangement', '')
+            date_found = job_dict.get('date_found', '')
+            
+            # Skip jobs without a valid job_id
+            if not job_id:
+                logger.warning(f"Skipping job without valid ID: {job_dict}")
+                continue
+            
+            # Create job data in the format your template expects
+            job_data_entry = {
+                'job': {
+                    'job_id': str(job_id),  # Ensure job_id is a string
+                    'job_title': job_title or 'Unknown Title',
+                    'company_name': company_name or 'Unknown Company',
+                    'location': location,
+                    'job_url': job_url,
+                    'job_description': job_description,
+                    'salary_range': salary_range,
+                    'job_type': job_type,
+                    'experience_level': experience_level,
+                    'work_arrangement': work_arrangement,
+                    'date_found': date_found
+                },
+                'application': None,  # You'd need to fetch actual application details
+                'is_favorited': False,  # You'd need to fetch favorites data
+                'application_count': application_counts.get(job_id, 0),
+                'has_applied': application_counts.get(job_id, 0) > 0
+            }
+            
+            jobs_data.append(job_data_entry)
+        
+        end_time = time.time()
+        query_time = end_time - start_time
+        
+        # Update analytics
+        total_applications = len([job_data for job_data in jobs_data if job_data.get('has_applied')])
+        analytics.update({
+            'total_applications': total_applications,
+            'status_counts': {
+                'interviewing': 0,
+                'applied': total_applications,
+                'rejected': 0,
+                'offered': 0
+            }
+        })
+        
+        logger.info(f"✅ OPTIMIZED: Loaded {len(jobs_data)} jobs in {query_time:.3f}s with 2 queries")
+        
+        # Add some template variables your template might expect
+        today = datetime.now().strftime('%Y-%m-%d')
+        page = int(request.args.get('page', 1))
+        
+        return render_template('jobs.html', 
+                             jobs=jobs_data, 
+                             filters=filters, 
+                             analytics=analytics,
+                             today=today,
+                             page=page)
+        
+    except Exception as e:
+        logger.error(f"❌ Error in optimized jobs_page: {str(e)}")
+        # logger.exception("Full traceback:")
+        flash('Error loading jobs', 'error')
+        
+        return render_template('jobs.html', 
+                             jobs=jobs_data, 
+                             filters=filters, 
+                             analytics=analytics,
+                             today=datetime.now().strftime('%Y-%m-%d'),
+                             page=1)
 
 @app.route('/jobs/<job_id>')
 @login_required

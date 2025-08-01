@@ -9,7 +9,7 @@ import os
 import logging
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime, timedelta
-from flask import session, request, redirect, url_for, flash
+from flask import session, request, redirect, url_for, flash, jsonify
 from functools import wraps
 
 # Configure logging
@@ -225,12 +225,33 @@ def login_required(f: Callable) -> Callable:
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        logger.info(f"=== login_required decorator called for {f.__name__} ===")
+        logger.info(f"Request path: {request.path}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        
         auth = get_auth_context()
+        logger.info(f"Auth context: {auth}")
         
-        if not auth.is_authenticated():
-            flash("Please log in to access this page.", "warning")
-            return redirect(url_for('auth.login_supabase'))
+        is_auth = auth.is_authenticated()
+        logger.info(f"Is authenticated: {is_auth}")
         
+        if not is_auth:
+            logger.error("User not authenticated - redirecting")
+            # Check if this is an API request (expecting JSON)
+            # Don't treat multipart form data as JSON requests
+            is_json_request = (
+                request.headers.get('Accept', '').startswith('application/json') or 
+                request.path.startswith('/api/') or 
+                (request.path.startswith('/resume/') and request.content_type and 'multipart/form-data' not in request.content_type)
+            )
+            if is_json_request:
+                return jsonify({'success': False, 'error': 'Authentication required'}), 401
+            else:
+                flash("Please log in to access this page.", "warning")
+                return redirect(url_for('auth.login_supabase'))
+        
+        logger.info("User is authenticated - proceeding to route")
         return f(*args, **kwargs)
     
     return decorated_function
@@ -301,4 +322,19 @@ def is_authenticated() -> bool:
         return auth.is_authenticated()
     except Exception as e:
         logger.error(f"Error checking authentication: {e}")
-        return False 
+        return False
+
+def get_user_id() -> Optional[str]:
+    """
+    Get current user ID for use in API routes.
+    
+    Returns:
+        User ID string or None if not authenticated
+    """
+    try:
+        auth = get_auth_context()
+        user = auth.get_current_user()
+        return user.get('user_id') if user else None
+    except Exception as e:
+        logger.error(f"Error getting user ID: {e}")
+        return None 

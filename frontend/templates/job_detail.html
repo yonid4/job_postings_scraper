@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ job.title }} at {{ job.company }} - Job Details{% endblock %}
+{% block title %}{{ job.job_title }} at {{ job.company_name }} - Job Details{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,7 +8,7 @@
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('jobs_page') }}">Jobs</a></li>
-            <li class="breadcrumb-item active">{{ job.title }}</li>
+            <li class="breadcrumb-item active">{{ job.job_title }}</li>
         </ol>
     </nav>
 
@@ -20,8 +20,8 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <h1 class="h2 mb-2">{{ job.title }}</h1>
-                            <h3 class="h5 text-muted mb-3">{{ job.company }}</h3>
+                            <h1 class="h2 mb-2">{{ job.job_title }}</h1>
+                            <h3 class="h5 text-muted mb-3">{{ job.company_name }}</h3>
                             
                             <div class="row mb-3">
                                 <div class="col-md-6">
@@ -29,44 +29,36 @@
                                         <i class="fas fa-map-marker-alt text-muted me-2"></i>
                                         <span>{{ job.location or 'Location not specified' }}</span>
                                     </div>
-                                    {% if job.posted_date %}
+                                    {% if job.date_posted %}
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="fas fa-calendar text-muted me-2"></i>
-                                        <span>Posted {{ job.posted_date.strftime('%B %d, %Y') }}</span>
+                                        <span>Posted {{ job.date_posted.strftime('%B %d, %Y') if job.date_posted else 'Date not specified' }}</span>
                                     </div>
                                     {% endif %}
-                                    {% if job.salary_min or job.salary_max %}
+                                    {% if job.salary_range %}
                                     <div class="d-flex align-items-center">
                                         <i class="fas fa-dollar-sign text-muted me-2"></i>
-                                        <span>
-                                            {% if job.salary_min and job.salary_max %}
-                                                ${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}
-                                            {% elif job.salary_min %}
-                                                From ${{ "{:,}".format(job.salary_min) }}
-                                            {% elif job.salary_max %}
-                                                Up to ${{ "{:,}".format(job.salary_max) }}
-                                            {% endif %}
-                                        </span>
+                                        <span>{{ job.salary_range }}</span>
                                     </div>
                                     {% endif %}
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex flex-wrap gap-2">
                                         {% if job.job_type %}
-                                        <span class="badge bg-primary">{{ job.job_type.value|title }}</span>
+                                        <span class="badge bg-primary">{{ job.job_type|title }}</span>
                                         {% endif %}
                                         {% if job.experience_level %}
-                                        <span class="badge bg-info">{{ job.experience_level.value|title }}</span>
+                                        <span class="badge bg-info">{{ job.experience_level|title }}</span>
                                         {% endif %}
-                                        {% if job.remote_type %}
-                                        <span class="badge bg-success">{{ job.remote_type.value|title }}</span>
+                                        {% if job.work_arrangement %}
+                                        <span class="badge bg-success">{{ job.work_arrangement|title }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="text-end">
-                            <button type="button" class="btn btn-outline-primary mb-2" onclick="toggleFavorite('{{ job.id }}')">
+                            <button type="button" class="btn btn-outline-primary mb-2" onclick="toggleFavorite('{{ job.job_id }}')">
                                 <i class="fas fa-star {% if is_favorited %}text-warning{% endif %}"></i> 
                                 {% if is_favorited %}Favorited{% else %}Favorite{% endif %}
                             </button>
@@ -86,64 +78,30 @@
                 </div>
                 <div class="card-body">
                     <div class="job-description">
-                        {{ job.description|safe|nl2br }}
+                        {{ job.job_description|safe|nl2br if job.job_description else 'No description available' }}
                     </div>
                 </div>
             </div>
 
             <!-- Requirements -->
-            {% if job.requirements %}
+            {% if job.gemini_evaluation %}
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Requirements</h5>
+                    <h5 class="mb-0">AI Evaluation</h5>
                 </div>
                 <div class="card-body">
-                    <ul class="list-unstyled">
-                        {% for requirement in job.requirements %}
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            {{ requirement }}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Responsibilities -->
-            {% if job.responsibilities %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Responsibilities</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        {% for responsibility in job.responsibilities %}
-                        <li class="mb-2">
-                            <i class="fas fa-arrow-right text-primary me-2"></i>
-                            {{ responsibility }}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Benefits -->
-            {% if job.benefits %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Benefits</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        {% for benefit in job.benefits %}
-                        <li class="mb-2">
-                            <i class="fas fa-gift text-warning me-2"></i>
-                            {{ benefit }}
-                        </li>
-                        {% endfor %}
-                    </ul>
+                    <div class="mb-3">
+                        {% if job.gemini_score %}
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-{{ 'success' if job.gemini_score >= 7 else 'warning' if job.gemini_score >= 5 else 'danger' }} me-2">
+                                Score: {{ "%.1f"|format(job.gemini_score) }}/10
+                            </span>
+                        </div>
+                        {% endif %}
+                        <div class="evaluation-text">
+                            {{ job.gemini_evaluation|safe|nl2br }}
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -160,15 +118,15 @@
                     {% if application %}
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-{{ get_status_color(application.status.value) }} fs-6">
-                                    {{ application.status.value|title }}
+                                <span class="badge bg-{{ get_status_color(application.application_status.value) }} fs-6">
+                                    {{ application.application_status.value|title }}
                                 </span>
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="editApplication()">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
                             </div>
                             <small class="text-muted">
-                                Applied: {{ application.applied_date.strftime('%B %d, %Y') }}
+                                Applied: {{ application.applied_date.strftime('%B %d, %Y') if application.applied_date else 'Date not specified' }}
                             </small>
                             {% if application.application_method %}
                             <br>
@@ -182,27 +140,6 @@
                         <div class="mb-3">
                             <h6>Notes:</h6>
                             <p class="text-muted small">{{ application.notes }}</p>
-                        </div>
-                        {% endif %}
-                        
-                        {% if application.follow_up_date %}
-                        <div class="mb-3">
-                            <h6>Follow-up Date:</h6>
-                            <p class="text-muted small">{{ application.follow_up_date.strftime('%B %d, %Y') }}</p>
-                        </div>
-                        {% endif %}
-                        
-                        {% if application.interview_date %}
-                        <div class="mb-3">
-                            <h6>Interview Date:</h6>
-                            <p class="text-muted small">{{ application.interview_date.strftime('%B %d, %Y') }}</p>
-                        </div>
-                        {% endif %}
-                        
-                        {% if application.salary_offered %}
-                        <div class="mb-3">
-                            <h6>Salary Offered:</h6>
-                            <p class="text-success">${{ "{:,}".format(application.salary_offered) }}</p>
                         </div>
                         {% endif %}
                         
@@ -563,7 +500,7 @@ function toggleFavorite(jobId) {
 function shareJob() {
     if (navigator.share) {
         navigator.share({
-            title: '{{ job.title }} at {{ job.company }}',
+            title: '{{ job.job_title }} at {{ job.company_name }}',
             text: 'Check out this job opportunity!',
             url: window.location.href
         });

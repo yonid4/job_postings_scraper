@@ -120,27 +120,6 @@ def register_supabase():
     
     return render_template('auth/register_supabase.html')
 
-
-@auth_bp.route('/test-supabase', methods=['GET'])
-def test_supabase():
-    """
-    Test page for Supabase configuration and functionality.
-    
-    GET: Display test page with Supabase diagnostics
-    """
-    return render_template('auth/test_supabase.html')
-
-
-@auth_bp.route('/simple-test', methods=['GET'])
-def simple_test():
-    """
-    Simple test page for Supabase script loading.
-    
-    GET: Display simple test page
-    """
-    return render_template('auth/simple_test.html')
-
-
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """

@@ -218,8 +218,15 @@ function uploadResume() {
         return;
     }
     
+    console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+    
     const formData = new FormData();
     formData.append('resume', file);
+    
+    // Debug: Log FormData contents
+    for (let [key, value] of formData.entries()) {
+        console.log('FormData entry:', key, value);
+    }
     
     // Show upload progress
     const uploadBtn = document.getElementById('upload-btn');
@@ -228,10 +235,17 @@ function uploadResume() {
     
     fetch('/resume/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
+        // Don't set Content-Type header - let the browser set it automatically for FormData
+        // This ensures the correct multipart/form-data boundary is set
+        // Cache bust: 2025-07-31
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
             showAlert(data.message, 'success');
             loadResumeStatus(); // Refresh status display
@@ -240,6 +254,7 @@ function uploadResume() {
         }
     })
     .catch(error => {
+        console.error('Upload error:', error);
         showAlert('Upload failed: ' + error, 'error');
     })
     .finally(() => {
@@ -257,25 +272,29 @@ function loadResumeStatus() {
         const statusDiv = document.getElementById('resume-status');
         const summaryDiv = document.getElementById('resume-status-summary');
         
-        if (data.has_resume) {
+        // Handle the response structure from Flask app
+        const resumeData = data.status || data;
+        
+        if (resumeData.has_resume) {
             summaryDiv.innerHTML = `
                 <p class="text-success mb-1">
                     <i class="fas fa-check-circle me-1"></i>Resume uploaded
                 </p>
-                <p class="text-muted small mb-0">${data.filename}</p>
+                <p class="text-muted small mb-0">${resumeData.filename}</p>
             `;
             
             statusDiv.innerHTML = `
                 <div class="alert alert-info">
                     <h6><i class="fas fa-info-circle me-2"></i>Resume Details</h6>
-                    <p class="mb-1"><strong>File:</strong> ${data.filename}</p>
-                    <p class="mb-1"><strong>Type:</strong> ${data.file_type.toUpperCase()}</p>
-                    <p class="mb-1"><strong>Size:</strong> ${(data.file_size / 1024).toFixed(1)} KB</p>
-                    <p class="mb-1"><strong>Uploaded:</strong> ${new Date(data.uploaded_at).toLocaleDateString()}</p>
-                    ${data.is_processed ? 
+                    <p class="mb-1"><strong>File:</strong> ${resumeData.filename}</p>
+                    <p class="mb-1"><strong>Type:</strong> ${resumeData.file_type.toUpperCase()}</p>
+                    <p class="mb-1"><strong>Size:</strong> ${(resumeData.file_size / 1024).toFixed(1)} KB</p>
+                    <p class="mb-1"><strong>Uploaded:</strong> ${new Date(resumeData.uploaded_at).toLocaleDateString()}</p>
+                    
+                    <!-- ${resumeData.is_processed ?
                         `<p class="mb-1 text-success"><strong>Status:</strong> Processed</p>` :
                         `<p class="mb-1 text-warning"><strong>Status:</strong> Will be processed when you search for jobs</p>`
-                    }
+                    } -->
                 </div>
             `;
         } else {

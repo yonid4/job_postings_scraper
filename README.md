@@ -7,9 +7,11 @@ A comprehensive Python-based AI-powered system that analyzes job listings and pr
 This system helps job seekers efficiently evaluate job opportunities by:
 - **AI-Powered Analysis**: Uses Google Gemini AI to analyze job requirements and candidate qualifications
 - **Smart Qualification Scoring**: Provides detailed reasoning and confidence scores for job matches
-- **Google Sheets Integration**: Tracks applications and analysis results in cloud storage
-- **Web Interface**: User-friendly Flask-based frontend for job management
+- **Supabase Integration**: Secure user authentication and cloud data storage with row-level security
+- **Enhanced LinkedIn Scraping**: Advanced scraping with filter support, CAPTCHA handling, and anti-detection measures
 - **Resume Processing**: Analyzes resumes and cover letters for better matching
+- **Web Interface**: User-friendly Flask-based frontend for job management
+- **Emergency Performance Optimization**: Ultra-fast job loading with aggressive caching
 
 ## 🏗️ Project Structure
 
@@ -18,40 +20,50 @@ autoApply-bot/
 ├── 📁 src/                    # Core source code
 │   ├── 📁 ai/                # AI qualification analysis
 │   │   └── qualification_analyzer.py
+│   ├── 📁 auth/              # Authentication and user management
+│   │   ├── auth_context.py
+│   │   ├── flask_integration.py
+│   │   ├── profile_integration.py
+│   │   └── supabase_auth_manager.py
 │   ├── 📁 config/            # Configuration management
 │   │   ├── config_manager.py
 │   │   ├── applicant_profile.py
 │   │   └── production_config.py
 │   ├── 📁 data/              # Data models and storage
 │   │   ├── models.py
-│   │   └── google_sheets_manager.py
-│   ├── 📁 scrapers/          # Job site scrapers (LinkedIn, etc.)
+│   │   ├── google_sheets_manager.py
+│   │   ├── supabase_manager.py
+│   │   ├── resume_manager.py
+│   │   ├── job_tracker.py
+│   │   ├── emergency_queries.py
+│   │   └── user_profile_manager.py
+│   ├── 📁 scrapers/          # Job site scrapers
 │   │   ├── base_scraper.py
 │   │   ├── linkedin_scraper_enhanced.py
+│   │   ├── linkedin_api_scraper.py
 │   │   └── example_scraper.py
-│   ├── 📁 automation/        # Application automation logic
 │   ├── 📁 utils/             # Utility functions
 │   │   ├── logger.py
 │   │   ├── session_manager.py
-│   │   └── job_link_processor.py
+│   │   ├── job_link_processor.py
+│   │   ├── captcha_handler.py
+│   │   └── search_strategy_manager.py
+│   ├── 📁 debug/             # Performance monitoring
+│   │   └── performance_profiler.py
 │   └── __init__.py
 ├── 📁 frontend/              # Web application interface
 │   ├── 📁 templates/         # HTML templates
 │   ├── 📁 config/            # Frontend configuration
 │   ├── 📁 data/              # Frontend data storage
 │   ├── 📁 uploads/           # File uploads (resumes, etc.)
-│   ├── app.py                # Flask application
+│   ├── app_supabase.py       # Main Flask application
+│   ├── auth_routes.py        # Authentication routes
+│   ├── profile_routes.py     # Profile management routes
+│   ├── resume_routes.py      # Resume processing routes
 │   └── run.py                # Frontend runner
 ├── 📁 tests/                 # Comprehensive test suites
 │   ├── test_*.py             # Unit and integration tests
 │   └── README.md             # Test documentation
-├── 📁 demos/                 # Demonstration scripts
-│   ├── demo_*.py             # Feature demonstrations
-│   └── README.md             # Demo documentation
-├── 📁 scripts/               # Utility scripts and tools
-│   ├── run_*.py              # Production scripts
-│   ├── debug_*.py            # Debug tools
-│   └── README.md             # Script documentation
 ├── 📁 config/                # Configuration files
 │   ├── settings.json         # Application settings
 │   ├── *.json                # API credentials
@@ -98,27 +110,29 @@ nano .env
 ```
 
 **Required Environment Variables:**
-- `LINKEDIN_USERNAME` - LinkedIn email
-- `LINKEDIN_PASSWORD` - LinkedIn password
+- `SUPABASE_URL` - Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for admin operations)
 - `GEMINI_API_KEY` - Google Gemini API key for AI analysis
-- `GOOGLE_SHEETS_CREDENTIALS_PATH` - Path to Google Sheets service account JSON
-- `GOOGLE_SHEETS_SPREADSHEET_ID` - Your Google Sheets spreadsheet ID
+- `GOOGLE_SHEETS_CREDENTIALS_PATH` - Path to Google Sheets service account JSON (optional)
+- `GOOGLE_SHEETS_SPREADSHEET_ID` - Your Google Sheets spreadsheet ID (optional)
 
 **Optional Configuration:**
 - `APPLICANT_*` - Personal information and preferences
 - `AUTO_APPLY_*` - Automation settings
 - `DELAY_*` - Timing configurations
+- `TESTING_MODE` - Set to true for development (bypasses email verification)
 
 ### 3. Run the Application
 
 #### Web Interface (Recommended)
 ```bash
 # Start the Flask web interface
-python scripts/start_frontend.py
-
-# Or run directly
 cd frontend
 python run.py
+
+# Or run directly
+python app_supabase.py
 ```
 
 #### Command Line Interface
@@ -148,6 +162,9 @@ python -m pytest tests/test_linkedin_*.py
 # AI qualification tests
 python -m pytest tests/test_qualification_*.py
 
+# Authentication tests
+python -m pytest tests/test_auth_*.py
+
 # Integration tests
 python -m pytest tests/test_integration.py
 
@@ -164,40 +181,87 @@ python -m pytest tests/test_*filter*.py
 - **Confidence Metrics**: Probability scores for job matches
 - **Customizable Thresholds**: Adjustable qualification criteria
 
+### **Enhanced LinkedIn Scraping**
+- **Persistent Sessions**: Maintains browser sessions for consistent scraping
+- **Advanced Filtering**: Supports date posted, work arrangement, experience level, and job type filters
+- **CAPTCHA Handling**: Automatic detection and user-friendly manual completion
+- **Anti-Detection Measures**: Stealth techniques to avoid detection
+- **Interface Detection**: Works with both old and new LinkedIn interfaces
+- **Search Strategy Management**: Intelligent selection of scraping methods
+
+### **Supabase Integration**
+- **User Authentication**: Secure email/password registration with email verification
+- **Profile Management**: Automatic profile creation and management
+- **Cloud Storage**: Secure storage for jobs, applications, and search history
+- **Row Level Security**: Users can only access their own data
+- **Real-time Updates**: Live data synchronization
+- **User Profiles**: Complete profile management with skills, experience, and preferences
+
+### **Resume Processing**
+- **AI-Powered Analysis**: Analyzes resume content for skill extraction
+- **Cover Letter Generation**: Creates personalized cover letters
+- **Skill Matching**: Compares resume skills with job requirements
+- **Experience Alignment**: Evaluates years of experience and background
+- **Supabase Storage**: Secure cloud storage for resume files
+
 ### **Smart Job Processing**
 - **Job Link Processing**: Analyzes individual job URLs
 - **Resume Matching**: Compares candidate skills with job requirements
 - **Experience Alignment**: Evaluates years of experience and background
 - **Skills Analysis**: Identifies skill gaps and matches
+- **Duplicate Detection**: Prevents duplicate job applications
 
 ### **Data Management**
-- **Google Sheets Integration**: Cloud-based application tracking
+- **Google Sheets Integration**: Cloud-based application tracking (optional)
+- **Supabase Database**: Primary data storage with real-time sync
 - **Structured Data Models**: Comprehensive job and application data
 - **Export Capabilities**: Multiple export formats
 - **Search History**: Track and analyze job search patterns
+- **Job Favorites**: Save and manage favorite job listings
 
 ### **Web Interface**
 - **User-Friendly Dashboard**: Modern Flask-based web application
 - **Job Management**: View, analyze, and track job applications
 - **Profile Management**: Update personal information and preferences
 - **Results Visualization**: Clear presentation of AI analysis results
+- **Authentication**: Secure login and registration system
+- **Emergency Performance**: Ultra-fast job loading with aggressive caching
+
+### **Emergency Performance Optimization**
+- **Ultra-Fast Loading**: <2 second job page load times
+- **Aggressive Caching**: Intelligent caching for performance
+- **Memory Optimization**: Efficient memory usage and monitoring
+- **Performance Profiling**: Real-time performance monitoring
+- **Emergency Routes**: Optimized routes for critical performance scenarios
 
 ### **Automation Capabilities**
 - **Batch Processing**: Analyze multiple job links at once
 - **Status Tracking**: Monitor application progress
 - **Duplicate Detection**: Prevents duplicate analyses
 - **Session Management**: Persistent login and data
+- **Application Tracking**: Complete application lifecycle management
 
 ## 🔧 Configuration
 
 ### **Environment Variables** (`.env`)
 ```bash
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
 # AI Configuration
 GEMINI_API_KEY=your_gemini_api_key
 
-# Google Sheets
+# Google Sheets (Optional)
 GOOGLE_SHEETS_CREDENTIALS_PATH=path/to/credentials.json
 GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id
+
+# Flask Configuration
+FLASK_SECRET_KEY=your-secret-key-change-this
+
+# Testing Mode (Development)
+TESTING_MODE=true
 
 # Applicant Profile
 APPLICANT_FIRST_NAME=YourName
@@ -229,6 +293,12 @@ MAX_APPLICATIONS_PER_SESSION=5
 - Authentication tokens
 - Persistent login data
 
+### **Performance Monitoring**
+- Real-time performance profiling
+- Memory usage tracking
+- Query performance analysis
+- Emergency performance alerts
+
 ## 🛠️ Development
 
 ### **Code Organization**
@@ -252,10 +322,13 @@ MAX_APPLICATIONS_PER_SESSION=5
 ## 📚 Documentation
 
 ### **Feature Guides** (`docs/`)
-- AI qualification system implementation
-- Google Sheets integration guide
-- LinkedIn scraper documentation
-- Filter system implementation
+- Supabase integration guide
+- Enhanced LinkedIn scraper documentation
+- CAPTCHA handling implementation
+- Resume processing system
+- Authentication system guide
+- Emergency performance optimization
+- User profile management
 
 ### **API Documentation**
 - Component interfaces and usage
@@ -283,19 +356,21 @@ MAX_APPLICATIONS_PER_SESSION=5
 - Python 3.9+
 - Chrome browser (for scraping)
 - Stable internet connection
-- Valid API credentials (Gemini, Google Sheets)
+- Valid API credentials (Gemini, Supabase)
 
 ### **Performance Optimization**
 - Session reuse and caching
 - Rate limiting for API calls
 - Resource cleanup
 - Error recovery mechanisms
+- Emergency performance optimization
 
 ### **Scalability Features**
 - Modular component design
 - Configurable batch processing
 - Efficient data storage
 - Optimized AI analysis
+- Supabase cloud scaling
 
 ## 🤝 Contributing
 
@@ -338,14 +413,17 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### **Common Issues**
 - **API Key Issues**: Ensure your Gemini API key is valid and has sufficient quota
-- **Google Sheets Access**: Verify your service account has proper permissions
+- **Supabase Setup**: Verify your Supabase project is properly configured
 - **LinkedIn Login**: Check if your credentials are correct and account is not locked
+- **CAPTCHA Challenges**: Complete manual verification when prompted
 - **AI Analysis Failures**: Review the logs for specific error messages
+- **Performance Issues**: Use emergency performance routes for slow loading
 
 ### **Debugging**
 - Check `logs/` directory for detailed error logs
 - Use debug scripts in `scripts/debug_*.py`
 - Enable DEBUG logging in environment variables
+- Use emergency performance monitoring for slow queries
 
 ---
 
