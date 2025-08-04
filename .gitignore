@@ -148,6 +148,7 @@ config/secrets.json
 # Google Sheets API credentials
 credentials.json
 token.json
+client_secret_*.json
 
 # Resume and cover letter files
 resumes/
@@ -237,6 +238,12 @@ htmlcov/
 *.pyd
 __pycache__/
 *.so
+
+# Debug and test files
+linkedin_debug_*.png
+linkedin_filter_test_*.log
+test_*.html
+debug_*.html
 
 # Local development files
 local_settings.py

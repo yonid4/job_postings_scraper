@@ -78,9 +78,7 @@ class ScrapingSettings:
 class APISettings:
     """Configuration for external API integrations."""
     
-    google_sheets_credentials_path: str = ""
-    google_sheets_spreadsheet_id: str = ""
-    google_sheets_worksheet_name: str = "Qualified Jobs"
+    
     email_notifications: bool = False
     email_smtp_server: str = ""
     email_smtp_port: int = 587
@@ -169,16 +167,7 @@ class ConfigurationManager:
                 self.config['linkedin'] = {}
             self.config['linkedin']['password'] = os.getenv('LINKEDIN_PASSWORD')
         
-        # Google Sheets Settings
-        if os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH'):
-            if 'api_settings' not in self.config:
-                self.config['api_settings'] = {}
-            self.config['api_settings']['google_sheets_credentials_path'] = os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH')
-        
-        if os.getenv('GOOGLE_SHEETS_SPREADSHEET_ID'):
-            if 'api_settings' not in self.config:
-                self.config['api_settings'] = {}
-            self.config['api_settings']['google_sheets_spreadsheet_id'] = os.getenv('GOOGLE_SHEETS_SPREADSHEET_ID')
+
     
     def get_user_profile(self) -> UserProfile:
         """Get user profile configuration."""
@@ -239,9 +228,6 @@ class ConfigurationManager:
         """Get API settings configuration."""
         api_data = self.config.get('api_settings', {})
         return APISettings(
-            google_sheets_credentials_path=api_data.get('google_sheets_credentials_path', ''),
-            google_sheets_spreadsheet_id=api_data.get('google_sheets_spreadsheet_id', ''),
-            google_sheets_worksheet_name=api_data.get('google_sheets_worksheet_name', 'Qualified Jobs'),
             email_notifications=api_data.get('email_notifications', False),
             email_smtp_server=api_data.get('email_smtp_server', ''),
             email_smtp_port=api_data.get('email_smtp_port', 587),

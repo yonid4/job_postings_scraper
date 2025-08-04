@@ -200,8 +200,7 @@ This document outlines the comprehensive documentation plan for the Job Applicat
 
 ### **10. Integration Documentation**
 
-#### **`docs/GOOGLE_SHEETS_INTEGRATION.md`**
-- Google Sheets setup
+
 - API configuration
 - Data synchronization
 - Export capabilities

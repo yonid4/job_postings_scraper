@@ -207,7 +207,7 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="save_to_sheets" checked>
                             <label class="form-check-label" for="save_to_sheets">
-                                Save qualified jobs to Google Sheets
+                                Save qualified jobs
                             </label>
                         </div>
                     </div>
@@ -943,7 +943,7 @@ function saveJobFromSearch(index) {
         data: { job_url: job.job_url },
         success: function(response) {
             if (response.success) {
-                showAlert(`Successfully saved "${job.job_title}" to Google Sheets!`, 'success');
+                showAlert(`Successfully saved "${job.job_title}"!`, 'success');
                 // Change button to show saved state
                 saveBtn.removeClass('btn-success').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> Saved');
             } else {
@@ -1108,7 +1108,7 @@ function saveAllJobsFromSearch() {
         method: 'POST',
         success: function(response) {
             if (response.success) {
-                showAlert('Successfully saved ' + response.count + ' jobs to Google Sheets!', 'success');
+                showAlert('Successfully saved ' + response.count + ' jobs!', 'success');
                 // Change button to show saved state
                 saveAllBtn.removeClass('btn-primary').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> All Saved');
             } else {

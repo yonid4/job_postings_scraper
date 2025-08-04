@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from src.config.config_manager import ConfigurationManager, UserProfile, AISettings
 from src.utils.logger import setup_logging, JobAutomationLogger
 from src.data.models import JobListing, QualificationResult, ScrapingSession, QualificationStatus, UserDecision
-from src.data.google_sheets_manager import GoogleSheetsManager
+
 from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
 from src.utils.job_link_processor import JobLinkProcessor, JobLinkInfo
 
@@ -45,7 +45,7 @@ class JobQualificationSystem:
         self.logger: Optional[JobAutomationLogger] = None
         self.qualification_analyzer: Optional[QualificationAnalyzer] = None
         self.job_link_processor: Optional[JobLinkProcessor] = None
-        self.sheets_manager: Optional[GoogleSheetsManager] = None
+
         
         # Initialize system components
         self._initialize_system()
@@ -62,8 +62,7 @@ class JobQualificationSystem:
             # Initialize AI components
             self._initialize_ai_components()
             
-            # Initialize Google Sheets
-            self._initialize_google_sheets()
+
             
             # Log system startup
             if self.logger:
@@ -150,23 +149,7 @@ class JobQualificationSystem:
             print(f"❌ Failed to initialize AI components: {e}")
             raise
     
-    def _initialize_google_sheets(self) -> None:
-        """Initialize Google Sheets integration."""
-        try:
-            api_settings = self.config_manager.get_api_settings()
-            
-            if api_settings.google_sheets_spreadsheet_id:
-                self.sheets_manager = GoogleSheetsManager(
-                    credentials_path=api_settings.google_sheets_credentials_path,
-                    spreadsheet_id=api_settings.google_sheets_spreadsheet_id
-                )
-                print("✅ Google Sheets integration initialized")
-            else:
-                print("⚠️  Google Sheets not configured")
-                
-        except Exception as e:
-            print(f"❌ Failed to initialize Google Sheets: {e}")
-            # Don't raise here as Google Sheets is optional
+
     
     def demonstrate_data_models(self) -> None:
         """Demonstrate the data models functionality."""
@@ -254,56 +237,10 @@ class JobQualificationSystem:
         print(f"      - Temperature: {ai_settings.temperature}")
         
         print(f"   🔌 API Settings:")
-        print(f"      - Google Sheets enabled: {'Yes' if api_settings.google_sheets_spreadsheet_id else 'No'}")
+
         print(f"      - Email notifications: {'Yes' if api_settings.email_notifications else 'No'}")
     
-    def demonstrate_google_sheets(self) -> None:
-        """Demonstrate Google Sheets integration."""
-        print("\n📊 Demonstrating Google Sheets Integration:")
-        
-        if not self.sheets_manager:
-            print("   ⚠️  Google Sheets not configured")
-            print("      Set GOOGLE_SHEETS_SPREADSHEET_ID in .env file")
-            return
-        
-        try:
-            # Test connection
-            if self.sheets_manager.test_connection():
-                print("   ✅ Google Sheets connection successful")
-                
-                # Create a sample qualification result for demonstration
-                sample_qualification = QualificationResult(
-                    job_id="demo-job-123",
-                    job_title="Demo Software Engineer",
-                    company="Demo Company",
-                    job_url="https://example.com/demo-job",
-                    qualification_score=85,
-                    qualification_status=QualificationStatus.QUALIFIED,
-                    ai_reasoning="Strong match for experience and skills",
-                    required_experience="3-5 years",
-                    education_requirements="Bachelor's degree",
-                    key_skills_mentioned=["Python", "JavaScript"],
-                    matching_strengths=["Python experience"],
-                    potential_concerns=["Limited JavaScript experience"]
-                )
-                
-                # Write to Google Sheets (commented out to avoid spam)
-                # success = self.sheets_manager.write_qualification_result(sample_qualification)
-                # if success:
-                #     print("   ✅ Sample qualification result written to Google Sheets")
-                # else:
-                #     print("   ❌ Failed to write sample qualification result")
-                
-                print("   📝 Google Sheets integration ready (writing disabled for demo)")
-                
-            else:
-                print("   ❌ Google Sheets connection failed")
-                print("      Check credentials and spreadsheet permissions")
-                
-        except Exception as e:
-            print(f"   ❌ Google Sheets error: {e}")
-            if self.logger:
-                self.logger.log_api_error("Google Sheets", e, "demonstration")
+
     
     def demonstrate_ai_analysis(self) -> None:
         """Demonstrate AI qualification analysis functionality."""
@@ -497,7 +434,7 @@ class JobQualificationSystem:
         # Demonstrate core components
         self.demonstrate_data_models()
         self.demonstrate_configuration()
-        self.demonstrate_google_sheets()
+
         
         # Demonstrate AI and processing capabilities
         self.demonstrate_ai_analysis()
@@ -510,7 +447,7 @@ class JobQualificationSystem:
         print("   - Add your Gemini API key to use AI analysis")
         print("   - Implement your own custom analysis logic")
         print("   - Process job links and analyze qualifications")
-        print("   - Save results to Google Sheets")
+
     
     def process_job_links(self, job_links: List[str]) -> List[QualificationResult]:
         """
@@ -555,15 +492,7 @@ class JobQualificationSystem:
         
         print(f"   ✅ Analyzed {len(qualification_results)} jobs")
         
-        # Save to Google Sheets if available
-        if self.sheets_manager:
-            saved_count = 0
-            for result in qualification_results:
-                if result.qualification_score >= self.config_manager.get_ai_settings().qualification_threshold:
-                    if self.sheets_manager.write_qualification_result(result):
-                        saved_count += 1
-            
-            print(f"   ✅ Saved {saved_count} qualified jobs to Google Sheets")
+
         
         return qualification_results
     

@@ -36,10 +36,10 @@ from src.config.config_manager import ConfigurationManager, UserProfile, AISetti
 from src.utils.job_link_processor import JobLinkProcessor
 from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
 from src.data.models import QualificationResult, QualificationStatus, UserDecision
-from src.data.google_sheets_manager import GoogleSheetsManager
+
 from src.data.resume_manager import ResumeManager
-from src.data.job_tracker import JobTracker
-from src.data.models import JobApplication, ApplicationStatus, ApplicationMethod, JobFavorite
+
+
 from src.utils.logger import JobAutomationLogger
 
 # Supabase integration
@@ -113,9 +113,7 @@ logger = JobAutomationLogger()
 config_manager = None
 job_processor = None
 qualification_analyzer = None
-sheets_manager = None
 resume_manager = None
-job_tracker = None
 
 # Server-side storage for analysis results (in-memory cache)
 analysis_cache: Dict[str, Any] = {}
@@ -136,7 +134,7 @@ def cleanup_old_analysis_results():
 
 def initialize_system():
     """Initialize the system components."""
-    global config_manager, job_processor, qualification_analyzer, sheets_manager, resume_manager, job_tracker
+    global config_manager, job_processor, qualification_analyzer, resume_manager
     
     try:
         config_manager = ConfigurationManager()
@@ -151,8 +149,7 @@ def initialize_system():
             from examples.custom_analyzer_example import CustomRuleBasedAnalyzer
             qualification_analyzer = CustomRuleBasedAnalyzer(ai_settings)
         
-        # Initialize Google Sheets manager
-        sheets_manager = GoogleSheetsManager()
+
         
         # Initialize resume manager with Supabase integration
         try:
@@ -180,10 +177,6 @@ def initialize_system():
         except Exception as e:
             logger.error(f"Error initializing ResumeManager: {e}")
             raise
-        
-        # Initialize job tracker
-        job_db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'jobs.db')
-        job_tracker = JobTracker(job_db_path)
         
         logger.info("System components initialized successfully")
         

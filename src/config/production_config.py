@@ -42,38 +42,12 @@ class LinkedInCredentials:
         """Validate that credentials are properly set."""
         return bool(self.username and self.password and '@' in self.username)
 
-@dataclass
-class GoogleSheetsConfig:
-    """Google Sheets configuration."""
-    credentials_path: str
-    spreadsheet_id: str
-    
-    @classmethod
-    def from_env(cls) -> Optional['GoogleSheetsConfig']:
-        """Load Google Sheets config from environment variables."""
-        credentials_path = os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH')
-        spreadsheet_id = os.getenv('GOOGLE_SHEETS_SPREADSHEET_ID')
-        
-        if not credentials_path or not spreadsheet_id:
-            logger.warning("Google Sheets configuration not found in environment variables")
-            return None
-        
-        # Validate credentials file exists
-        if not os.path.exists(credentials_path):
-            logger.error(f"Google Sheets credentials file not found: {credentials_path}")
-            return None
-        
-        return cls(credentials_path=credentials_path, spreadsheet_id=spreadsheet_id)
-    
-    def validate(self) -> bool:
-        """Validate that configuration is properly set."""
-        return bool(self.credentials_path and self.spreadsheet_id and os.path.exists(self.credentials_path))
+
 
 @dataclass
 class ProductionConfig:
     """Production configuration for the job automation system."""
     linkedin: Optional[LinkedInCredentials]
-    google_sheets: Optional[GoogleSheetsConfig]
     
     # Scraping configuration
     max_jobs_per_session: int = 10  # Conservative default for production
@@ -108,7 +82,6 @@ class ProductionConfig:
         
         # Load credentials
         linkedin = LinkedInCredentials.from_env()
-        google_sheets = GoogleSheetsConfig.from_env()
         
         # Override defaults with environment variables if available
         max_jobs = int(os.getenv('MAX_JOBS_PER_SESSION', '10'))
@@ -118,7 +91,6 @@ class ProductionConfig:
         
         return cls(
             linkedin=linkedin,
-            google_sheets=google_sheets,
             max_jobs_per_session=max_jobs,
             delay_min=delay_min,
             delay_max=delay_max,
@@ -129,7 +101,6 @@ class ProductionConfig:
         """Validate all configuration components."""
         validation_results = {
             'linkedin_credentials': self.linkedin.validate() if self.linkedin else False,
-            'google_sheets_config': self.google_sheets.validate() if self.google_sheets else False,
             'scraping_config': self.max_jobs_per_session > 0 and self.delay_min > 0 and self.delay_max > self.delay_min
         }
         
@@ -147,11 +118,7 @@ class ProductionConfig:
         else:
             print("❌ LinkedIn: Not configured")
         
-        # Google Sheets
-        if self.google_sheets:
-            print(f"✅ Google Sheets: Configured (spreadsheet: {self.google_sheets.spreadsheet_id[:20]}...)")
-        else:
-            print("❌ Google Sheets: Not configured")
+
         
         # Scraping settings
         print(f"📊 Max Jobs per Session: {self.max_jobs_per_session}")

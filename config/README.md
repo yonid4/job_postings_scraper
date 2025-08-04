@@ -6,7 +6,7 @@ This directory contains configuration files and credentials for the Job Applicat
 
 ### **Configuration Files**
 - `settings.json` - Main application configuration
-- `auto-apply-bot-466218-5a1d69f23d44.json` - Google Sheets API credentials
+
 
 ### **Template Files**
 - `env.template` - Environment variables template (in root directory)
@@ -24,11 +24,10 @@ Edit `.env` with your credentials:
 LINKEDIN_USERNAME=your-email@example.com
 LINKEDIN_PASSWORD=your-password
 OPENAI_API_KEY=your-openai-api-key
-GOOGLE_SHEETS_CREDENTIALS_FILE=config/auto-apply-bot-466218-5a1d69f23d44.json
+
 ```
 
-### **2. Google Sheets Setup**
-The Google Sheets credentials file enables:
+
 - Job data storage and tracking
 - Application status management
 - Results export functionality

@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h2 mb-1">System Settings</h1>
-                <p class="text-muted mb-0">Configure Google Sheets integration and general settings</p>
+                <p class="text-muted mb-0">Configure general settings</p>
             </div>
             <div class="text-end">
                 <button type="button" class="btn btn-primary" onclick="saveSettings()">
@@ -64,45 +64,7 @@
                 </div>
             </div>
 
-            <!-- Google Sheets Settings -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-table me-2"></i>
-                        Google Sheets Integration
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="google_sheets_id" class="form-label">Google Sheets ID</label>
-                            <input type="text" class="form-control" id="google_sheets_id" name="google_sheets_id" 
-                                   value="{{ api_settings.google_sheets_spreadsheet_id if api_settings else '' }}" 
-                                   placeholder="1JRbxQYOWlVLuSgv4uhfM2ljfiiBydYsD6fj_0geYRQk">
-                            <div class="form-text">
-                                The ID from your Google Sheets URL (the long string between /d/ and /edit)
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="google_sheets_worksheet" class="form-label">Worksheet Name</label>
-                            <input type="text" class="form-control" id="google_sheets_worksheet" name="google_sheets_worksheet" 
-                                   value="{{ api_settings.google_sheets_worksheet_name if api_settings else 'Qualified Jobs' }}" 
-                                   placeholder="Qualified Jobs">
-                            <div class="form-text">Name of the worksheet to save results</div>
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-info">
-                        <h6><i class="fas fa-info-circle me-2"></i>Google Sheets Setup</h6>
-                        <ol class="mb-0">
-                            <li>Create a new Google Sheet</li>
-                            <li>Share it with your service account email</li>
-                            <li>Copy the spreadsheet ID from the URL</li>
-                            <li>Paste it in the field above</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
+
         </form>
     </div>
 
@@ -125,19 +87,7 @@
                     </div>
                 </div>
                 
-                <div class="mb-3">
-                    <h6>Google Sheets</h6>
-                    {% if api_settings and api_settings.google_sheets_spreadsheet_id %}
-                        <p class="text-success mb-1">
-                            <i class="fas fa-check-circle me-1"></i>Sheets ID configured
-                        </p>
-                        <p class="text-muted small mb-0">Worksheet: {{ api_settings.google_sheets_worksheet_name }}</p>
-                    {% else %}
-                        <p class="text-warning mb-0">
-                            <i class="fas fa-exclamation-triangle me-1"></i>No Sheets ID configured
-                        </p>
-                    {% endif %}
-                </div>
+
                 
                 <div>
                     <h6>System Status</h6>

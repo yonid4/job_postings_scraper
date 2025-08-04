@@ -31,7 +31,7 @@ autoApply-bot/
 │   │   └── production_config.py
 │   ├── 📁 data/              # Data models and storage
 │   │   ├── models.py
-│   │   ├── google_sheets_manager.py
+
 │   │   ├── supabase_manager.py
 │   │   ├── resume_manager.py
 │   │   ├── job_tracker.py
@@ -68,7 +68,7 @@ autoApply-bot/
 │   ├── settings.json         # Application settings
 │   ├── *.json                # API credentials
 │   └── README.md             # Config documentation
-├── 📁 data/                  # Data storage and samples
+├── 📁 data/                  # Legacy data storage (migrated to Supabase)
 ├── 📁 docs/                  # Documentation
 │   ├── *.md                  # Feature guides and summaries
 │   └── ACTIVE_CONTEXT.md     # Current development context
@@ -114,8 +114,7 @@ nano .env
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for admin operations)
 - `GEMINI_API_KEY` - Google Gemini API key for AI analysis
-- `GOOGLE_SHEETS_CREDENTIALS_PATH` - Path to Google Sheets service account JSON (optional)
-- `GOOGLE_SHEETS_SPREADSHEET_ID` - Your Google Sheets spreadsheet ID (optional)
+
 
 **Optional Configuration:**
 - `APPLICANT_*` - Personal information and preferences
@@ -212,7 +211,7 @@ python -m pytest tests/test_*filter*.py
 - **Duplicate Detection**: Prevents duplicate job applications
 
 ### **Data Management**
-- **Google Sheets Integration**: Cloud-based application tracking (optional)
+
 - **Supabase Database**: Primary data storage with real-time sync
 - **Structured Data Models**: Comprehensive job and application data
 - **Export Capabilities**: Multiple export formats
@@ -253,9 +252,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 # AI Configuration
 GEMINI_API_KEY=your_gemini_api_key
 
-# Google Sheets (Optional)
-GOOGLE_SHEETS_CREDENTIALS_PATH=path/to/credentials.json
-GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id
+
 
 # Flask Configuration
 FLASK_SECRET_KEY=your-secret-key-change-this

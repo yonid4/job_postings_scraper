@@ -1,6 +1,6 @@
 # AI Job Qualification Screening System
 
-A Python-based AI-powered system that analyzes job descriptions against user qualifications and saves qualifying jobs to Google Sheets.
+A Python-based AI-powered system that analyzes job descriptions against user qualifications and saves qualifying jobs to Supabase.
 
 ## 🚀 Project Overview
 
@@ -8,7 +8,7 @@ This system helps job seekers efficiently screen job opportunities by:
 - **Job Link Processing**: Extracting job information from user-provided URLs
 - **AI Qualification Analysis**: Using Google Gemini to analyze job descriptions against user qualifications
 - **Smart Scoring**: Providing 0-100 qualification scores with detailed reasoning
-- **Google Sheets Integration**: Saving qualified jobs with analysis results
+
 - **User Review**: Allowing manual override of AI recommendations
 - **Customizable AI Logic**: Easy to implement your own analysis algorithms
 
@@ -18,7 +18,7 @@ This system helps job seekers efficiently screen job opportunities by:
 - ✅ Configuration management with user profiles
 - ✅ AI-powered qualification analysis using Google Gemini
 - ✅ Job link processing for multiple job sites
-- ✅ Google Sheets integration for result storage
+
 - ✅ Comprehensive logging and error handling
 - ✅ Type hints and comprehensive documentation
 - ✅ Customizable AI analysis logic
@@ -78,9 +78,7 @@ Create a `.env` file in the project root:
 # Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Google Sheets Configuration (Optional)
-GOOGLE_SHEETS_CREDENTIALS_PATH=path/to/your/credentials.json
-GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id_here
+
 ```
 
 ### 5. Configure User Profile
@@ -143,7 +141,7 @@ autoApply-bot/
 │   ├── data/                  # Data models and storage
 │   │   ├── __init__.py
 │   │   ├── models.py
-│   │   └── google_sheets_manager.py
+
 │   ├── scrapers/              # Web scraping (legacy)
 │   │   ├── __init__.py
 │   │   ├── base_scraper.py
@@ -183,14 +181,7 @@ Configure the AI analysis behavior:
 - **Max Tokens**: Maximum response length from AI
 - **Temperature**: Response creativity (lower = more consistent)
 
-### Google Sheets Integration
-Set up Google Sheets for storing qualification results:
 
-1. Create a Google Cloud Project
-2. Enable Google Sheets API
-3. Create a service account and download credentials
-4. Create a Google Sheets spreadsheet
-5. Share the spreadsheet with the service account email
 
 ## 🚀 Usage
 
@@ -296,7 +287,7 @@ def _parse_ai_response(self, response):
     }
 ```
 
-## 📊 Google Sheets Output
+
 
 The system creates a "Qualified Jobs" worksheet with columns:
 - Job Title
@@ -374,7 +365,7 @@ For issues and questions:
 - Complete system refactor to AI qualification screening
 - Google Gemini integration for job analysis
 - User profile management
-- Google Sheets integration for qualified jobs
+
 - Job link processing for multiple sites
 - Customizable AI analysis logic
 
@@ -382,4 +373,4 @@ For issues and questions:
 - Original job application automation system
 - Web scraping foundation
 - Application tracking
-- Google Sheets integration for applications 
+ 

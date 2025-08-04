@@ -187,8 +187,8 @@
 
 {% block extra_js %}
 <script>
-// Get total jobs count from server-side template
-const totalJobsCount = {{ results|length }};
+// Get total jobs count dynamically
+const totalJobsCount = document.querySelectorAll('.job-card').length;
 
 function saveThisSpecificJob(index) {
     console.log('saveThisSpecificJob called with index:', index);
@@ -212,7 +212,7 @@ function saveThisSpecificJob(index) {
         data: { job_url: jobUrl },
         success: function(response) {
             if (response.success) {
-                showAlert('Successfully saved "' + jobTitle + '" to Google Sheets!', 'success');
+                showAlert('Successfully saved "' + jobTitle + '"!', 'success');
                 // Change button to show saved state
                 saveBtn.removeClass('btn-success').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> Saved');
             } else {
@@ -247,7 +247,7 @@ function saveAllJobs() {
         method: 'POST',
         success: function(response) {
             if (response.success) {
-                showAlert('Successfully saved ' + response.count + ' jobs to Google Sheets!', 'success');
+                showAlert('Successfully saved ' + response.count + ' jobs!', 'success');
                 // Change button to show saved state
                 saveAllBtn.removeClass('btn-primary').addClass('btn-secondary').html('<i class="fas fa-check me-1"></i> All Saved');
             } else {
