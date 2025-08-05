@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Jobs - Job Tracker</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --light-bg: #f8fafc;
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 12px 16px;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+        }
+        
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-color), #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            transition: transform 0.2s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .job-card {
+            border-left: 4px solid #e5e7eb;
+        }
+        
+        .job-card.applied {
+            border-left-color: var(--success-color);
+        }
+        
+        .filter-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .quick-filter {
+            margin: 0.25rem;
+            transition: all 0.2s;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+        
+        .quick-filter.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--secondary-color);
+        }
+        
+        @media (max-width: 768px) {
+            .stats-row .col-md-2 {
+                flex: 0 0 50%;
+                max-width: 50%;
+                margin-bottom: 1rem;
+            }
+            
+            .filter-panel {
+                margin-bottom: 1rem;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-robot me-2"></i>Job Automation System
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/search">
+                            <i class="fas fa-search me-1"></i>Job Search
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">
+                            <i class="fas fa-briefcase me-1"></i>Jobs
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/jobs-tracker">
+                            <i class="fas fa-chart-line me-1"></i>Job Tracker
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/profile">
+                            <i class="fas fa-user me-1"></i>Profile
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <div class="avatar me-2">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span>User</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="/settings"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                        <li class="breadcrumb-item active">My Jobs</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 mb-0">My Jobs</h1>
+                <p class="text-muted">Track and manage your job applications</p>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4 stats-row" id="statsCards">
+            <!-- Statistics will be populated by JavaScript -->
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="filter-panel">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput" 
+                                       placeholder="Search jobs, companies, locations...">
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="d-flex flex-wrap">
+                                <button class="btn btn-sm btn-outline-primary quick-filter active" data-filter="all">
+                                    All Jobs
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary quick-filter" data-filter="applied">
+                                    Applied
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary quick-filter" data-filter="favorites">
+                                    Favorites
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary quick-filter" data-filter="this_week">
+                                    This Week
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Controls -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <span class="text-muted" id="jobCount">Loading jobs...</span>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-outline-primary" onclick="exportJobs()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </div>
+
+        <!-- Jobs Container -->
+        <div id="jobsContainer">
+            <div class="row" id="jobsList">
+                <!-- Jobs will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <i class="fas fa-briefcase fa-3x mb-3"></i>
+            <h4>No jobs found</h4>
+            <p>Try adjusting your filters or search for new opportunities.</p>
+            <a href="/search" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search for Jobs
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-top mt-5 py-4">
+        <div class="container text-center text-muted">
+            <p class="mb-0">
+                <i class="fas fa-code me-1"></i>
+                AI Job Qualification Screening System v2.0.0
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Pass data from Flask to JavaScript -->
+    <script>
+        // Pass Flask template data to JavaScript
+        window.jobsData = {% if jobs %}{{ jobs | tojson | safe }}{% else %}[]{% endif %};
+        window.analyticsData = {% if analytics %}{{ analytics | tojson | safe }}{% else %}{}{% endif %};
+        
+        console.log('Jobs data from Flask:', window.jobsData);
+        console.log('Analytics data from Flask:', window.analyticsData);
+        console.log('Jobs data length:', window.jobsData ? window.jobsData.length : 'undefined');
+    </script>
+    
+    <script>
+        // Global variables
+        let currentFilter = 'all';
+        let currentSearch = '';
+
+        // Initialize page when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing jobs tracker...');
+            initializeJobsTracker();
+        });
+
+        // Main initialization function
+        function initializeJobsTracker() {
+            try {
+                if (!window.jobsData || window.jobsData.length === 0) {
+                    console.log('No jobs data available');
+                    showEmptyState();
+                    return;
+                }
+
+                console.log('Initializing with', window.jobsData.length, 'jobs');
+                updateStatistics();
+                renderAllJobs();
+                setupEventListeners();
+                updateJobCount();
+                
+            } catch (error) {
+                console.error('Error initializing jobs tracker:', error);
+                showError('Failed to load jobs. Please refresh the page.');
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Search input
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(handleSearch, 300));
+            }
+            
+            // Quick filter buttons
+            document.querySelectorAll('.quick-filter').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setQuickFilter(this.dataset.filter);
+                });
+            });
+        }
+
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Handle search input
+        function handleSearch(event) {
+            currentSearch = event.target.value.toLowerCase().trim();
+            renderFilteredJobs();
+        }
+
+        // Set quick filter
+        function setQuickFilter(filter) {
+            currentFilter = filter;
+            
+            // Update active button
+            document.querySelectorAll('.quick-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            
+            renderFilteredJobs();
+        }
+
+        // Clear search
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                currentSearch = '';
+                renderFilteredJobs();
+            }
+        }
+
+        // Update statistics display
+        function updateStatistics() {
+            const statsContainer = document.getElementById('statsCards');
+            if (!statsContainer || !window.analyticsData) return;
+
+            const analytics = window.analyticsData;
+            
+            const statsHtml = `
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${analytics.total_jobs_tracked || window.jobsData.length}</h3>
+                            <small>Total Jobs</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${analytics.applications_submitted || 0}</h3>
+                            <small>Applications</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${(analytics.response_rate || 0).toFixed(1)}%</h3>
+                            <small>Response Rate</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${analytics.responses_received || 0}</h3>
+                            <small>Responses</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${analytics.interviews_scheduled || 0}</h3>
+                            <small>Interviews</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-3">
+                    <div class="card stats-card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="mb-1">${analytics.offers_received || 0}</h3>
+                            <small>Offers</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            statsContainer.innerHTML = statsHtml;
+        }
+
+        // Render all jobs
+        function renderAllJobs() {
+            renderFilteredJobs();
+        }
+
+        // Render filtered jobs
+        function renderFilteredJobs() {
+            if (!window.jobsData || window.jobsData.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            const filteredJobs = filterJobs();
+            const container = document.getElementById('jobsList');
+            
+            if (!container) {
+                console.error('Jobs container not found');
+                return;
+            }
+
+            if (filteredJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No jobs match your filters</h4>
+                            <p class="text-muted">Try adjusting your search or filters</p>
+                            <button class="btn btn-outline-primary" onclick="clearFilters()">Clear Filters</button>
+                        </div>
+                    </div>
+                `;
+                updateJobCount(0);
+                return;
+            }
+
+            // Hide empty state
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Render job cards
+            container.innerHTML = filteredJobs.map((jobItem, index) => 
+                createJobCardHTML(jobItem, index)
+            ).join('');
+
+            updateJobCount(filteredJobs.length);
+        }
+
+        // Filter jobs based on current filters
+        function filterJobs() {
+            return window.jobsData.filter(jobItem => {
+                const job = jobItem.job;
+                
+                // Search filter
+                if (currentSearch) {
+                    const searchableText = [
+                        job.title || '',
+                        job.company || '',
+                        job.location || '',
+                        jobItem.notes || ''
+                    ].join(' ').toLowerCase();
+                    
+                    if (!searchableText.includes(currentSearch)) {
+                        return false;
+                    }
+                }
+                
+                // Quick filters
+                switch (currentFilter) {
+                    case 'applied':
+                        return jobItem.has_applied;
+                    case 'favorites':
+                        return jobItem.is_favorited;
+                    case 'this_week':
+                        const weekAgo = new Date();
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        const jobDate = new Date(job.date_found);
+                        return jobDate >= weekAgo;
+                    case 'all':
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        // Create job card HTML
+        function createJobCardHTML(jobItem, index) {
+            const job = jobItem.job;
+            const dateFound = job.date_found ? new Date(job.date_found).toLocaleDateString() : 'Unknown';
+            const appliedClass = jobItem.has_applied ? 'applied' : '';
+            const favoriteIcon = jobItem.is_favorited ? 'fas fa-heart text-danger' : 'far fa-heart text-muted';
+            
+            return `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card job-card h-100 ${appliedClass}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-1">${escapeHtml(job.title || 'Unknown Title')}</h5>
+                                <button class="btn btn-sm btn-link p-0" onclick="toggleFavorite(${index})">
+                                    <i class="${favoriteIcon}"></i>
+                                </button>
+                            </div>
+                            
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="fas fa-building me-1"></i>
+                                ${escapeHtml(job.company || 'Unknown Company')}
+                            </h6>
+                            
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    ${escapeHtml(job.location || 'Remote')}
+                                </small>
+                            </p>
+                            
+                            ${job.salary ? `
+                                <p class="card-text">
+                                    <small class="text-success">
+                                        <i class="fas fa-dollar-sign me-1"></i>
+                                        ${escapeHtml(job.salary)}
+                                    </small>
+                                </p>
+                            ` : ''}
+                            
+                            <div class="mb-3">
+                                <span class="badge ${jobItem.has_applied ? 'bg-success' : 'bg-secondary'}">
+                                    ${jobItem.has_applied ? 'Applied' : 'Not Applied'}
+                                </span>
+                                ${jobItem.priority ? `<span class="badge bg-info ms-1">${jobItem.priority}</span>` : ''}
+                            </div>
+                            
+                            ${jobItem.notes ? `
+                                <div class="mb-3">
+                                    <small class="text-muted">
+                                        <strong>Notes:</strong> ${escapeHtml(jobItem.notes)}
+                                    </small>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">Found: ${dateFound}</small>
+                                ${jobItem.source ? `<br><small class="text-muted">Source: ${escapeHtml(jobItem.source)}</small>` : ''}
+                            </div>
+                            
+                            <div class="d-flex gap-2 flex-wrap">
+                                ${job.url ? `<a href="${escapeHtml(job.url)}" target="_blank" class="btn btn-primary btn-sm">View Job</a>` : ''}
+                                <button class="btn btn-outline-secondary btn-sm" onclick="showJobDetails(${index})">
+                                    Details
+                                </button>
+                                ${!jobItem.has_applied ? `<button class="btn btn-success btn-sm" onclick="markAsApplied(${index})">Mark Applied</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update job count display
+        function updateJobCount(count) {
+            const jobCountElement = document.getElementById('jobCount');
+            if (jobCountElement) {
+                const displayCount = count !== undefined ? count : window.jobsData.length;
+                const totalCount = window.jobsData.length;
+                
+                if (displayCount === totalCount) {
+                    jobCountElement.textContent = `${displayCount} jobs`;
+                } else {
+                    jobCountElement.textContent = `${displayCount} of ${totalCount} jobs`;
+                }
+            }
+        }
+
+        // Show empty state
+        function showEmptyState() {
+            const container = document.getElementById('jobsList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (container) container.innerHTML = '';
+            if (emptyState) emptyState.style.display = 'block';
+            
+            updateJobCount(0);
+        }
+
+        // Show error message
+        function showError(message) {
+            const container = document.getElementById('jobsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            currentFilter = 'all';
+            currentSearch = '';
+            
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+            
+            document.querySelectorAll('.quick-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('[data-filter="all"]').classList.add('active');
+            
+            renderFilteredJobs();
+        }
+
+        // Interactive functions
+        function toggleFavorite(index) {
+            console.log('Toggle favorite for job at index:', index);
+            // TODO: Implement API call to toggle favorite
+            alert('Favorite toggle functionality will be implemented with backend API');
+        }
+
+        function markAsApplied(index) {
+            console.log('Mark as applied for job at index:', index);
+            // TODO: Implement API call to mark as applied
+            alert('Mark as applied functionality will be implemented with backend API');
+        }
+
+        function showJobDetails(index) {
+            const jobItem = window.jobsData[index];
+            const job = jobItem.job;
+            
+            const details = `
+Job Details:
+
+Title: ${job.title || 'N/A'}
+Company: ${job.company || 'N/A'}
+Location: ${job.location || 'N/A'}
+Salary: ${job.salary || 'Not specified'}
+Found: ${job.date_found ? new Date(job.date_found).toLocaleDateString() : 'N/A'}
+Applied: ${jobItem.has_applied ? 'Yes' : 'No'}
+Priority: ${jobItem.priority || 'Not set'}
+Source: ${jobItem.source || 'N/A'}
+Notes: ${jobItem.notes || 'None'}
+
+Description: ${job.description || 'No description available'}
+            `;
+            
+            alert(details);
+            // TODO: Replace with proper modal implementation
+        }
+
+        function refreshData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) {
+                refreshIcon.classList.add('fa-spin');
+                setTimeout(() => {
+                    refreshIcon.classList.remove('fa-spin');
+                }, 1000);
+            }
+            
+            // TODO: Implement actual data refresh
+            console.log('Refresh data functionality will be implemented');
+        }
+
+        function exportJobs() {
+            console.log('Export jobs functionality will be implemented');
+            alert('Export functionality will be implemented');
+        }
+    </script>
+</body>
+</html>

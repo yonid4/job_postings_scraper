@@ -1317,6 +1317,706 @@ def get_status_color(status):
     return status_colors.get(status, 'secondary')
 
 
+@app.route('/jobs-tracker')
+@login_required
+def jobs_tracker():
+    """Enhanced job tracker page with comprehensive analytics and tracking - optimized approach."""
+    # Initialize default values for template safety
+    jobs_data = []
+    filters = {
+        'search': request.args.get('search', ''),
+        'status': request.args.get('status', ''),
+        'priority': request.args.get('priority', ''),
+        'source': request.args.get('source', ''),
+        'applied_date_from': request.args.get('applied_date_from', ''),
+        'applied_date_to': request.args.get('applied_date_to', ''),
+        'company': request.args.get('company', ''),
+        'location': request.args.get('location', ''),
+        'salary_min': request.args.get('salary_min', ''),
+        'salary_max': request.args.get('salary_max', '')
+    }
+    
+    # Default analytics to prevent template errors
+    analytics = {
+        'total_jobs_tracked': 0,
+        'applications_submitted': 0,
+        'response_rate': 0.0,
+        'responses_received': 0,
+        'interviews_scheduled': 0,
+        'offers_received': 0,
+        'status_counts': {
+            'interviewing': 0,
+            'applied': 0,
+            'rejected': 0,
+            'offered': 0
+        }
+    }
+    
+    try:
+        user = get_current_user()
+        if not user:
+            flash('Please log in to view jobs', 'error')
+            return redirect(url_for('auth.login'))
+        
+        # Get authenticated database manager
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            flash('Database connection failed', 'error')
+            return render_template('jobs_tracker.html', jobs=jobs_data, filters=filters, analytics=analytics)
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            flash('Please log in to view jobs', 'error')
+            return redirect(url_for('auth.login'))
+
+        logger.info("Starting optimized jobs_tracker query...")
+        start_time = time.time()
+        
+        # OPTIMIZED: Get all jobs and applications in 2 queries
+        try:
+            logger.info("Attempting to use new SupabaseManager methods...")
+            jobs_data_raw = db_manager.get_all_jobs(user_id)
+            applications_data_raw = db_manager.get_applications_by_user(user_id)
+            
+            logger.info(f"New methods successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+            
+        except Exception as method_error:
+            logger.warning(f"New methods failed: {method_error}")
+            
+            # Fallback to direct client access
+            logger.info("Attempting direct client access...")
+            jobs_response = db_manager.client.table('jobs').select('*').eq(
+                'user_id', user_id
+            ).order('date_found', desc=True).execute()
+            
+            applications_response = db_manager.client.table('applications').select('*').eq(
+                'user_id', user_id
+            ).execute()
+            
+            jobs_data_raw = jobs_response.data if jobs_response.data else []
+            applications_data_raw = applications_response.data if applications_response.data else []
+            
+            logger.info(f"Direct client successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+        
+        # Get favorites for user (enhanced feature for jobs_tracker)
+        try:
+            favorites_response = db_manager.client.table('job_favorites').select('*').eq(
+                'user_id', user_id
+            ).execute()
+            favorites_data_raw = favorites_response.data if favorites_response.data else []
+        except Exception as favorites_error:
+            logger.warning(f"Failed to fetch favorites: {favorites_error}")
+            favorites_data_raw = []
+        
+        # Create lookup dictionaries
+        application_counts = {}
+        applications_lookup = {}
+        for app in applications_data_raw:
+            job_id = app.get('job_id')
+            if job_id:
+                application_counts[job_id] = application_counts.get(job_id, 0) + 1
+                # Keep the most recent application for this job
+                if job_id not in applications_lookup or app.get('applied_date', '') > applications_lookup[job_id].get('applied_date', ''):
+                    applications_lookup[job_id] = app
+        
+        favorites_lookup = {fav['job_id']: fav for fav in favorites_data_raw}
+        
+        # Process jobs - create the structure your template expects
+        processed_jobs = 0
+        for job in jobs_data_raw:
+            job_dict = dict(job) if hasattr(job, 'items') else job
+            
+            # Try different possible field names for job_id
+            job_id = job_dict.get('job_id') or job_dict.get('id')
+            
+            # Skip jobs without a valid job_id
+            if not job_id:
+                logger.warning(f"Skipping job without valid ID: {job_dict}")
+                continue
+            
+            # Get application data
+            application = applications_lookup.get(job_id)
+            
+            # Apply filters (but don't filter here - let frontend handle it)
+            # This allows for better interactivity
+            
+            # Try different possible field names for other fields
+            job_title = job_dict.get('job_title') or job_dict.get('title')
+            company_name = job_dict.get('company_name') or job_dict.get('company')
+            location = job_dict.get('location', '')
+            job_url = job_dict.get('job_url') or job_dict.get('url', '#')
+            job_description = job_dict.get('job_description') or job_dict.get('description', '')
+            salary_range = job_dict.get('salary_range', '')
+            job_type = job_dict.get('job_type', '')
+            experience_level = job_dict.get('experience_level', '')
+            work_arrangement = job_dict.get('work_arrangement', '')
+            date_found = job_dict.get('date_found', '')
+            
+            # Get favorite data
+            favorite = favorites_lookup.get(job_id)
+            is_favorited = favorite is not None
+            priority = favorite.get('priority', 'medium') if favorite else 'medium'
+            
+            # Create enhanced job data in the format your template expects
+            job_data_entry = {
+                'job': {
+                    'job_id': str(job_id),  # Ensure job_id is a string
+                    'job_title': job_title or 'Unknown Title',
+                    'company_name': company_name or 'Unknown Company',
+                    'location': location,
+                    'job_url': job_url,
+                    'job_description': job_description,
+                    'salary_range': salary_range,
+                    'job_type': job_type,
+                    'experience_level': experience_level,
+                    'work_arrangement': work_arrangement,
+                    'date_found': date_found
+                },
+                'application': application,
+                'is_favorited': is_favorited,
+                'priority': priority,
+                'source': job_dict.get('source', 'unknown'),
+                'notes': favorite.get('notes', '') if favorite else '',
+                'application_count': application_counts.get(job_id, 0),
+                'has_applied': application_counts.get(job_id, 0) > 0
+            }
+            
+            jobs_data.append(job_data_entry)
+            processed_jobs += 1
+        
+        end_time = time.time()
+        query_time = end_time - start_time
+        
+        # Calculate comprehensive analytics
+        analytics = calculate_comprehensive_analytics(db_manager, user_id)
+        # Update with actual counts
+        analytics['total_jobs_tracked'] = len(jobs_data)
+        
+        logger.info(f"✅ OPTIMIZED: Loaded {len(jobs_data)} jobs in {query_time:.3f}s with 2 queries")
+        logger.info(f"Processed {processed_jobs} jobs successfully")
+        
+        # Add template variables
+        today = datetime.now().strftime('%Y-%m-%d')
+        page = int(request.args.get('page', 1))
+        
+        # Debug: Log what we're passing to the template
+        logger.info(f"Passing {len(jobs_data)} jobs to template")
+        logger.info(f"Analytics: {analytics}")
+        
+        return render_template('jobs_tracker.html', 
+                             jobs=jobs_data, 
+                             filters=filters, 
+                             analytics=analytics,
+                             today=today,
+                             page=page)
+        
+    except Exception as e:
+        logger.error(f"❌ Error in optimized jobs_tracker: {str(e)}")
+        logger.exception("Full traceback:")
+        flash('Error loading job tracker', 'error')
+        
+        return render_template('jobs_tracker.html', 
+                             jobs=jobs_data, 
+                             filters=filters, 
+                             analytics=analytics,
+                             today=datetime.now().strftime('%Y-%m-%d'),
+                             page=1)    
+
+
+def get_enhanced_jobs_data(db_manager, user_id, filters):
+    """Get jobs with enhanced data including applications, notes, and priorities - optimized approach."""
+    try:
+        logger.info("Starting optimized get_enhanced_jobs_data query...")
+        start_time = time.time()
+        
+        # OPTIMIZED: Get all jobs and applications in 2 queries (same as jobs_page)
+        try:
+            logger.info("Attempting to use new SupabaseManager methods...")
+            jobs_data_raw = db_manager.get_all_jobs(user_id)
+            applications_data_raw = db_manager.get_applications_by_user(user_id)
+            
+            logger.info(f"New methods successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+            
+        except Exception as method_error:
+            logger.warning(f"New methods failed: {method_error}")
+            
+            # Fallback to direct client access (same as jobs_page)
+            logger.info("Attempting direct client access...")
+            jobs_response = db_manager.client.table('jobs').select('*').eq(
+                'user_id', user_id
+            ).order('date_found', desc=True).execute()
+            
+            applications_response = db_manager.client.table('applications').select(
+                'job_id'
+            ).eq('user_id', user_id).execute()
+            
+            jobs_data_raw = jobs_response.data if jobs_response.data else []
+            applications_data_raw = applications_response.data if applications_response.data else []
+            
+            logger.info(f"Direct client successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+        
+        # Get favorites for user (enhanced feature)
+        try:
+            favorites_response = db_manager.client.table('job_favorites').select('*').eq(
+                'user_id', user_id
+            ).execute()
+            favorites_data_raw = favorites_response.data if favorites_response.data else []
+        except Exception as favorites_error:
+            logger.warning(f"Failed to fetch favorites: {favorites_error}")
+            favorites_data_raw = []
+        
+        # Create lookup dictionaries
+        applications_lookup = {app['job_id']: app for app in applications_data_raw}
+        favorites_lookup = {fav['job_id']: fav for fav in favorites_data_raw}
+        
+        # Process and filter jobs
+        enhanced_jobs = []
+        for job in jobs_data_raw:
+            job_dict = dict(job) if hasattr(job, 'items') else job
+            
+            # Try different possible field names for job_id
+            job_id = job_dict.get('job_id') or job_dict.get('id')
+            
+            # Skip jobs without a valid job_id
+            if not job_id:
+                logger.warning(f"Skipping job without valid ID: {job_dict}")
+                continue
+            
+            # Apply filters
+            if not passes_filters(job_dict, applications_lookup.get(job_id), filters):
+                continue
+            
+            # Get application data
+            application = applications_lookup.get(job_id)
+            
+            # Get favorite data
+            favorite = favorites_lookup.get(job_id)
+            is_favorited = favorite is not None
+            priority = favorite.get('priority', 'medium') if favorite else 'medium'
+            
+            # Create enhanced job data
+            enhanced_job = {
+                'job': {
+                    'job_id': str(job_id),  # Ensure job_id is a string
+                    'job_title': job_dict.get('job_title') or job_dict.get('title', 'Unknown Title'),
+                    'company_name': job_dict.get('company_name') or job_dict.get('company', 'Unknown Company'),
+                    'location': job_dict.get('location', ''),
+                    'job_url': job_dict.get('job_url') or job_dict.get('url', '#'),
+                    'job_description': job_dict.get('job_description') or job_dict.get('description', ''),
+                    'salary_range': job_dict.get('salary_range', ''),
+                    'job_type': job_dict.get('job_type', ''),
+                    'experience_level': job_dict.get('experience_level', ''),
+                    'work_arrangement': job_dict.get('work_arrangement', ''),
+                    'date_found': job_dict.get('date_found', '')
+                },
+                'application': application,
+                'is_favorited': is_favorited,
+                'priority': priority,
+                'source': job_dict.get('source', 'unknown'),
+                'notes': favorite.get('notes', '') if favorite else ''
+            }
+            
+            enhanced_jobs.append(enhanced_job)
+        
+        end_time = time.time()
+        query_time = end_time - start_time
+        logger.info(f"✅ OPTIMIZED: Loaded {len(enhanced_jobs)} enhanced jobs in {query_time:.3f}s with 2 queries")
+        
+        return enhanced_jobs
+        
+    except Exception as e:
+        logger.error(f"❌ Error in optimized get_enhanced_jobs_data: {e}")
+        return []
+
+
+def passes_filters(job, application, filters):
+    """Check if job passes all applied filters."""
+    # Search filter
+    if filters.get('search'):
+        search_term = filters['search'].lower()
+        job_title = job.get('job_title', '').lower()
+        company_name = job.get('company_name', '').lower()
+        location = job.get('location', '').lower()
+        
+        if search_term not in job_title and search_term not in company_name and search_term not in location:
+            return False
+    
+    # Status filter
+    if filters.get('status'):
+        if not application:
+            if filters['status'] != 'not_applied':
+                return False
+        elif application.get('application_status') != filters['status']:
+            return False
+    
+    # Priority filter
+    if filters.get('priority'):
+        # This would need to be implemented based on your priority system
+        pass
+    
+    # Source filter
+    if filters.get('source'):
+        if job.get('source') != filters['source']:
+            return False
+    
+    # Date filters
+    if filters.get('applied_date_from') or filters.get('applied_date_to'):
+        if not application:
+            return False
+        
+        applied_date = application.get('applied_date')
+        if not applied_date:
+            return False
+        
+        if filters.get('applied_date_from'):
+            if applied_date < filters['applied_date_from']:
+                return False
+        
+        if filters.get('applied_date_to'):
+            if applied_date > filters['applied_date_to']:
+                return False
+    
+    return True
+
+
+def calculate_comprehensive_analytics(db_manager, user_id):
+    """Calculate comprehensive analytics for the job tracker."""
+    try:
+        # Get all applications for user
+        applications_response = db_manager.client.table('applications').select('*').eq(
+            'user_id', user_id
+        ).execute()
+        
+        applications = applications_response.data if applications_response.data else []
+        
+        # Get all jobs for user
+        jobs_response = db_manager.client.table('jobs').select('*').eq(
+            'user_id', user_id
+        ).execute()
+        
+        jobs = jobs_response.data if jobs_response.data else []
+        
+        # Calculate basic metrics
+        total_jobs_tracked = len(jobs)
+        applications_submitted = len([app for app in applications if app.get('application_status') != 'not_applied'])
+        
+        # Calculate response rate
+        responses_received = len([app for app in applications if app.get('response_received', False)])
+        response_rate = (responses_received / applications_submitted * 100) if applications_submitted > 0 else 0
+        
+        # Calculate status counts
+        status_counts = {}
+        for app in applications:
+            status = app.get('application_status', 'not_applied')
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        # Calculate active applications (applied but not rejected/withdrawn)
+        active_applications = len([app for app in applications 
+                                 if app.get('application_status') in ['applied', 'phone_screen', 'interview', 'final_round']])
+        
+        # Calculate interviews scheduled
+        interviews_scheduled = len([app for app in applications 
+                                  if app.get('application_status') in ['phone_screen', 'interview', 'final_round']])
+        
+        # Calculate offers received
+        offers_received = len([app for app in applications 
+                             if app.get('application_status') == 'offer'])
+        
+        # Calculate application funnel
+        funnel = {
+            'applied': (applications_submitted / total_jobs_tracked * 100) if total_jobs_tracked > 0 else 0,
+            'interviewing': (interviews_scheduled / applications_submitted * 100) if applications_submitted > 0 else 0,
+            'offers': (offers_received / interviews_scheduled * 100) if interviews_scheduled > 0 else 0
+        }
+        
+        # Calculate average response time
+        response_times = []
+        for app in applications:
+            if app.get('response_received') and app.get('applied_date') and app.get('response_date'):
+                applied_date = datetime.fromisoformat(app['applied_date'].replace('Z', '+00:00'))
+                response_date = datetime.fromisoformat(app['response_date'].replace('Z', '+00:00'))
+                days_diff = (response_date - applied_date).days
+                response_times.append(days_diff)
+        
+        avg_response_time = sum(response_times) / len(response_times) if response_times else 0
+        
+        # Calculate top responding companies
+        company_responses = {}
+        for app in applications:
+            if app.get('response_received'):
+                company = app.get('company_name', 'Unknown')
+                if company not in company_responses:
+                    company_responses[company] = {'responses': 0, 'total': 0}
+                company_responses[company]['responses'] += 1
+                company_responses[company]['total'] += 1
+            else:
+                company = app.get('company_name', 'Unknown')
+                if company not in company_responses:
+                    company_responses[company] = {'responses': 0, 'total': 0}
+                company_responses[company]['total'] += 1
+        
+        top_companies = []
+        for company, data in company_responses.items():
+            if data['total'] > 0:
+                response_rate = (data['responses'] / data['total']) * 100
+                top_companies.append({
+                    'name': company,
+                    'response_rate': round(response_rate, 1)
+                })
+        
+        # Sort by response rate
+        top_companies.sort(key=lambda x: x['response_rate'], reverse=True)
+        top_companies = top_companies[:5]  # Top 5
+        
+        return {
+            'total_jobs_tracked': total_jobs_tracked,
+            'applications_submitted': applications_submitted,
+            'response_rate': round(response_rate, 1),
+            'responses_received': responses_received,
+            'active_applications': active_applications,
+            'interviews_scheduled': interviews_scheduled,
+            'offers_received': offers_received,
+            'status_counts': status_counts,
+            'funnel': funnel,
+            'avg_response_time': round(avg_response_time, 1),
+            'top_companies': top_companies
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating analytics: {e}")
+        return {
+            'total_jobs_tracked': 0,
+            'applications_submitted': 0,
+            'response_rate': 0,
+            'responses_received': 0,
+            'active_applications': 0,
+            'interviews_scheduled': 0,
+            'offers_received': 0,
+            'status_counts': {},
+            'funnel': {'applied': 0, 'interviewing': 0, 'offers': 0},
+            'avg_response_time': 0,
+            'top_companies': []
+        }
+
+
+# Enhanced API endpoints for the job tracker
+@app.route('/api/jobs/status-update', methods=['POST'])
+@login_required
+def update_job_status():
+    """Update job application status with enhanced features."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        data = request.get_json()
+        job_id = data.get('job_id')
+        status = data.get('status')
+        notes = data.get('notes', '')
+        follow_up_date = data.get('follow_up_date')
+        
+        if not job_id or not status:
+            return jsonify({'success': False, 'error': 'Job ID and status are required'})
+        
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        # Check if application exists
+        existing_application = db_manager.applications.get_application_by_job(user['user_id'], job_id)
+        
+        if existing_application:
+            # Update existing application
+            success, message, application = db_manager.applications.update_application_status(
+                existing_application.application_id, 
+                user['user_id'], 
+                SupabaseApplicationStatus(status), 
+                notes
+            )
+            
+            # Update follow-up date if provided
+            if follow_up_date and success:
+                db_manager.applications.update_follow_up_date(
+                    existing_application.application_id,
+                    user['user_id'],
+                    follow_up_date
+                )
+        else:
+            # Create new application
+            application_data = {
+                'user_id': user['user_id'],
+                'job_id': job_id,
+                'application_method': SupabaseApplicationMethod.MANUAL,
+                'applied_date': datetime.now().isoformat(),
+                'application_status': SupabaseApplicationStatus(status),
+                'notes': notes,
+                'follow_up_date': follow_up_date
+            }
+            
+            success, message, application = db_manager.applications.create_application(application_data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Application status updated successfully',
+                'status': status
+            })
+        else:
+            return jsonify({'success': False, 'error': f'Failed to update status: {message}'})
+        
+    except Exception as e:
+        logger.error(f"Update job status error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/jobs/bulk-status-update', methods=['POST'])
+@login_required
+def bulk_update_job_status():
+    """Bulk update job application statuses."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        data = request.get_json()
+        job_ids = data.get('job_ids', [])
+        status = data.get('status')
+        notes = data.get('notes', '')
+        
+        if not job_ids or not status:
+            return jsonify({'success': False, 'error': 'Job IDs and status are required'})
+        
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        success_count = 0
+        for job_id in job_ids:
+            try:
+                # Check if application exists
+                existing_application = db_manager.applications.get_application_by_job(user['user_id'], job_id)
+                
+                if existing_application:
+                    # Update existing application
+                    success, message, application = db_manager.applications.update_application_status(
+                        existing_application.application_id, 
+                        user['user_id'], 
+                        SupabaseApplicationStatus(status), 
+                        notes
+                    )
+                else:
+                    # Create new application
+                    application_data = {
+                        'user_id': user['user_id'],
+                        'job_id': job_id,
+                        'application_method': SupabaseApplicationMethod.MANUAL,
+                        'applied_date': datetime.now().isoformat(),
+                        'application_status': SupabaseApplicationStatus(status),
+                        'notes': notes
+                    }
+                    
+                    success, message, application = db_manager.applications.create_application(application_data)
+                
+                if success:
+                    success_count += 1
+                    
+            except Exception as e:
+                logger.error(f"Error updating job {job_id}: {e}")
+                continue
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {success_count} out of {len(job_ids)} jobs',
+            'updated_count': success_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Bulk update job status error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/jobs/add-note', methods=['POST'])
+@login_required
+def add_job_note():
+    """Add or update notes for a job."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        data = request.get_json()
+        job_id = data.get('job_id')
+        note = data.get('note', '')
+        
+        if not job_id:
+            return jsonify({'success': False, 'error': 'Job ID is required'})
+        
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        # Check if favorite exists
+        favorite_response = db_manager.client.table('job_favorites').select('*').eq(
+            'user_id', user['user_id']
+        ).eq('job_id', job_id).execute()
+        
+        if favorite_response.data:
+            # Update existing favorite
+            favorite_id = favorite_response.data[0]['id']
+            update_response = db_manager.client.table('job_favorites').update({
+                'notes': note,
+                'last_updated': datetime.now().isoformat()
+            }).eq('id', favorite_id).execute()
+            
+            success = len(update_response.data) > 0
+        else:
+            # Create new favorite with note
+            create_response = db_manager.client.table('job_favorites').insert({
+                'user_id': user['user_id'],
+                'job_id': job_id,
+                'notes': note,
+                'priority': 1,
+                'favorited_date': datetime.now().isoformat(),
+                'created_date': datetime.now().isoformat(),
+                'last_updated': datetime.now().isoformat()
+            }).execute()
+            
+            success = len(create_response.data) > 0
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Note added successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to add note'})
+        
+    except Exception as e:
+        logger.error(f"Add job note error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# Template filter for getting days since applied
+@app.template_filter('get_days_since_applied')
+def get_days_since_applied(applied_date):
+    """Calculate days since application was submitted."""
+    if not applied_date:
+        return 'Unknown'
+    
+    try:
+        if isinstance(applied_date, str):
+            applied = datetime.fromisoformat(applied_date.replace('Z', '+00:00'))
+        else:
+            applied = applied_date
+        
+        today = datetime.now()
+        diff = today - applied
+        return diff.days
+    except Exception as e:
+        logger.error(f"Error calculating days since applied: {e}")
+        return 'Unknown'
+
+
 if __name__ == '__main__':
     # Initialize system components
     initialize_system()
