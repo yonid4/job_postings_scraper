@@ -288,6 +288,26 @@
         </div>
     </main>
 
+    <!-- Job Details Modal -->
+    <div class="modal fade" id="jobDetailsModal" tabindex="-1" aria-labelledby="jobDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="jobDetailsModalLabel">Job Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="jobDetailsModalBody">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="viewJobBtn" target="_blank">View Original Job</button>
+                    <button type="button" class="btn btn-success" id="markAppliedBtn">Mark as Applied</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-white border-top mt-5 py-4">
         <div class="container text-center text-muted">
@@ -309,19 +329,17 @@
         window.jobsData = {% if jobs %}{{ jobs | tojson | safe }}{% else %}[]{% endif %};
         window.analyticsData = {% if analytics %}{{ analytics | tojson | safe }}{% else %}{}{% endif %};
         
-        console.log('Jobs data from Flask:', window.jobsData);
-        console.log('Analytics data from Flask:', window.analyticsData);
-        console.log('Jobs data length:', window.jobsData ? window.jobsData.length : 'undefined');
+
     </script>
     
     <script>
         // Global variables
         let currentFilter = 'all';
         let currentSearch = '';
+        let currentJobIndex = -1; // Track which job is currently being viewed
 
         // Initialize page when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing jobs tracker...');
             initializeJobsTracker();
         });
 
@@ -329,12 +347,11 @@
         function initializeJobsTracker() {
             try {
                 if (!window.jobsData || window.jobsData.length === 0) {
-                    console.log('No jobs data available');
                     showEmptyState();
                     return;
                 }
 
-                console.log('Initializing with', window.jobsData.length, 'jobs');
+
                 updateStatistics();
                 renderAllJobs();
                 setupEventListeners();
@@ -351,57 +368,21 @@
             // Search input
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
-                searchInput.addEventListener('input', debounce(handleSearch, 300));
+                searchInput.addEventListener('input', function() {
+                    currentSearch = this.value.toLowerCase();
+                    renderFilteredJobs();
+                });
             }
-            
+
             // Quick filter buttons
             document.querySelectorAll('.quick-filter').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    setQuickFilter(this.dataset.filter);
+                    document.querySelectorAll('.quick-filter').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    renderFilteredJobs();
                 });
             });
-        }
-
-        // Debounce function for search
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Handle search input
-        function handleSearch(event) {
-            currentSearch = event.target.value.toLowerCase().trim();
-            renderFilteredJobs();
-        }
-
-        // Set quick filter
-        function setQuickFilter(filter) {
-            currentFilter = filter;
-            
-            // Update active button
-            document.querySelectorAll('.quick-filter').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
-            
-            renderFilteredJobs();
-        }
-
-        // Clear search
-        function clearSearch() {
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.value = '';
-                currentSearch = '';
-                renderFilteredJobs();
-            }
         }
 
         // Update statistics display
@@ -520,8 +501,8 @@
                 // Search filter
                 if (currentSearch) {
                     const searchableText = [
-                        job.title || '',
-                        job.company || '',
+                        job.title || job.job_title || '',
+                        job.company || job.company_name || '',
                         job.location || '',
                         jobItem.notes || ''
                     ].join(' ').toLowerCase();
@@ -556,29 +537,33 @@
             const appliedClass = jobItem.has_applied ? 'applied' : '';
             const favoriteIcon = jobItem.is_favorited ? 'fas fa-heart text-danger' : 'far fa-heart text-muted';
             
+
+            
+            // Use both possible field names for title and company
+            const jobTitle = job.title || job.job_title || 'Unknown Title';
+            const companyName = job.company || job.company_name || 'Unknown Company';
+            const linkedinUrl = job.linkedin_url || job.linkedin_job_url || job.job_url || '';
+            
             return `
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card job-card h-100 ${appliedClass}">
+                    <div class="card job-card h-100 ${appliedClass}" style="cursor: pointer;" onclick="showJobDetails(${index})">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-1">${escapeHtml(job.title || 'Unknown Title')}</h5>
-                                <button class="btn btn-sm btn-link p-0" onclick="toggleFavorite(${index})">
+                                <h5 class="card-title mb-1">${escapeHtml(jobTitle)}</h5>
+                                <button class="btn btn-sm btn-link p-0" onclick="event.stopPropagation(); toggleFavorite(${index})">
                                     <i class="${favoriteIcon}"></i>
                                 </button>
                             </div>
-                            
                             <h6 class="card-subtitle mb-2 text-muted">
                                 <i class="fas fa-building me-1"></i>
-                                ${escapeHtml(job.company || 'Unknown Company')}
+                                ${escapeHtml(companyName)}
                             </h6>
-                            
                             <p class="card-text">
                                 <small class="text-muted">
                                     <i class="fas fa-map-marker-alt me-1"></i>
                                     ${escapeHtml(job.location || 'Remote')}
                                 </small>
                             </p>
-                            
                             ${job.salary ? `
                                 <p class="card-text">
                                     <small class="text-success">
@@ -587,14 +572,12 @@
                                     </small>
                                 </p>
                             ` : ''}
-                            
                             <div class="mb-3">
                                 <span class="badge ${jobItem.has_applied ? 'bg-success' : 'bg-secondary'}">
                                     ${jobItem.has_applied ? 'Applied' : 'Not Applied'}
                                 </span>
                                 ${jobItem.priority ? `<span class="badge bg-info ms-1">${jobItem.priority}</span>` : ''}
                             </div>
-                            
                             ${jobItem.notes ? `
                                 <div class="mb-3">
                                     <small class="text-muted">
@@ -602,18 +585,19 @@
                                     </small>
                                 </div>
                             ` : ''}
-                            
                             <div class="mb-3">
                                 <small class="text-muted">Found: ${dateFound}</small>
-                                ${jobItem.source ? `<br><small class="text-muted">Source: ${escapeHtml(jobItem.source)}</small>` : ''}
+                                ${jobItem.source && jobItem.source !== 'unknown' && jobItem.source !== '' ? 
+                                    `<br><small class="text-muted"><i class="fab fa-linkedin me-1"></i><a href="${escapeHtml(jobItem.source)}" target="_blank" class="text-primary">LinkedIn</a></small>` : 
+                                    ''
+                                }
                             </div>
-                            
                             <div class="d-flex gap-2 flex-wrap">
-                                ${job.url ? `<a href="${escapeHtml(job.url)}" target="_blank" class="btn btn-primary btn-sm">View Job</a>` : ''}
-                                <button class="btn btn-outline-secondary btn-sm" onclick="showJobDetails(${index})">
+                                ${linkedinUrl ? `<a href="${escapeHtml(linkedinUrl)}" target="_blank" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">View Job</a>` : ''}
+                                <button class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation(); showJobDetails(${index})">
                                     Details
                                 </button>
-                                ${!jobItem.has_applied ? `<button class="btn btn-success btn-sm" onclick="markAsApplied(${index})">Mark Applied</button>` : ''}
+                                ${!jobItem.has_applied ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); markAsApplied(${index})">Mark Applied</button>` : ''}
                             </div>
                         </div>
                     </div>
@@ -702,25 +686,111 @@
         function showJobDetails(index) {
             const jobItem = window.jobsData[index];
             const job = jobItem.job;
+            currentJobIndex = index;
             
-            const details = `
-Job Details:
-
-Title: ${job.title || 'N/A'}
-Company: ${job.company || 'N/A'}
-Location: ${job.location || 'N/A'}
-Salary: ${job.salary || 'Not specified'}
-Found: ${job.date_found ? new Date(job.date_found).toLocaleDateString() : 'N/A'}
-Applied: ${jobItem.has_applied ? 'Yes' : 'No'}
-Priority: ${jobItem.priority || 'Not set'}
-Source: ${jobItem.source || 'N/A'}
-Notes: ${jobItem.notes || 'None'}
-
-Description: ${job.description || 'No description available'}
+            // Debug: Log the job data to see what's available
+            console.log('Job data:', job);
+            console.log('Job source:', jobItem.source);
+            console.log('Job linkedin_url:', job.linkedin_url);
+            
+            // Use both possible field names for title and company
+            const jobTitle = job.title || job.job_title || 'Unknown Title';
+            const companyName = job.company || job.company_name || 'Unknown Company';
+            const jobDescription = job.description || job.job_description || 'No description available';
+            const dateFound = job.date_found ? new Date(job.date_found).toLocaleDateString() : 'Unknown';
+            const linkedinUrl = job.linkedin_url || job.linkedin_job_url || job.job_url || '';
+            
+            const modalBody = document.getElementById('jobDetailsModalBody');
+            const viewJobBtn = document.getElementById('viewJobBtn');
+            const markAppliedBtn = document.getElementById('markAppliedBtn');
+            
+            // Populate modal content
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4 class="text-primary mb-3">${escapeHtml(jobTitle)}</h4>
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-building me-2"></i>
+                            ${escapeHtml(companyName)}
+                        </h6>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="badge ${jobItem.has_applied ? 'bg-success' : 'bg-secondary'} fs-6">
+                            ${jobItem.has_applied ? 'Applied' : 'Not Applied'}
+                        </span>
+                        ${jobItem.priority ? `<span class="badge bg-info ms-2 fs-6">${jobItem.priority}</span>` : ''}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong><i class="fas fa-map-marker-alt me-2"></i>Location:</strong><br>
+                        <span class="text-muted">${escapeHtml(job.location || 'Remote')}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong><i class="fas fa-dollar-sign me-2"></i>Salary:</strong><br>
+                        <span class="text-success">${escapeHtml(job.salary || 'Not specified')}</span></p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong><i class="fas fa-calendar me-2"></i>Found:</strong><br>
+                        <span class="text-muted">${dateFound}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong><i class="fab fa-linkedin me-2"></i>LinkedIn:</strong><br>
+                        ${jobItem.source && jobItem.source !== 'unknown' ? 
+                            `<a href="${escapeHtml(jobItem.source)}" target="_blank" class="text-primary">View on LinkedIn</a>` : 
+                            '<span class="text-muted">Not available</span>'
+                        }</p>
+                    </div>
+                </div>
+                
+                ${jobItem.notes ? `
+                <div class="mb-3">
+                    <p><strong><i class="fas fa-sticky-note me-2"></i>Notes:</strong></p>
+                    <div class="bg-light p-3 rounded">
+                        <p class="mb-0">${escapeHtml(jobItem.notes)}</p>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="mb-3">
+                    <p><strong><i class="fas fa-file-alt me-2"></i>Job Description:</strong></p>
+                    <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
+                        <p class="mb-0">${escapeHtml(jobDescription)}</p>
+                    </div>
+                </div>
             `;
             
-            alert(details);
-            // TODO: Replace with proper modal implementation
+            // Update modal buttons
+            if (linkedinUrl) {
+                viewJobBtn.style.display = 'inline-block';
+                viewJobBtn.onclick = function() {
+                    window.open(linkedinUrl, '_blank');
+                };
+            } else {
+                viewJobBtn.style.display = 'none';
+            }
+            
+            if (!jobItem.has_applied) {
+                markAppliedBtn.style.display = 'inline-block';
+                markAppliedBtn.onclick = function() {
+                    markAsApplied(index);
+                    // Close modal after marking as applied
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('jobDetailsModal'));
+                    if (modal) modal.hide();
+                };
+            } else {
+                markAppliedBtn.style.display = 'none';
+            }
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+            modal.show();
         }
 
         function refreshData() {

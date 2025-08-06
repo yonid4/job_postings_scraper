@@ -72,7 +72,7 @@ def test_google_sheets_integration():
             job_id=job_listing.id,
             job_title=job_listing.title,
             company=job_listing.company,
-            job_url=job_listing.job_url,
+            linkedin_url=job_listing.linkedin_url,
             application_url="https://example.com/apply/senior-python-dev",
             status=ApplicationStatus.APPLIED,
             application_method="automated",

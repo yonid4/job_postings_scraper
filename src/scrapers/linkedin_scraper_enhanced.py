@@ -2189,113 +2189,120 @@ class EnhancedLinkedInScraper(BaseScraper):
                             error_message=f"CAPTCHA_CHALLENGE: {captcha_info.message}"
                         )
                 
-                if not self.authenticate_with_session(self.username, self.password):
-                    # Use the specific error message if available
-                    error_message = getattr(self, 'last_auth_error', 'LinkedIn authentication failed')
-                    self.logger.logger.info(f"Authentication failed, returning error: {error_message}")
-                    return ScrapingResult(
-                        success=False,
-                        jobs=[],
-                        session=self.session,
-                        error_message=error_message
-                    )
-                
-                # Check for CAPTCHA after authentication
-                if self.driver:
-                    captcha_info = captcha_handler.detect_captcha()
-                    if captcha_info.status.value == 'detected':
-                        self.logger.logger.warning("CAPTCHA detected after authentication")
+                auth_result = self.authenticate_with_session(self.username, self.password)
+                if not auth_result:
+                    # Check if CAPTCHA was detected during authentication
+                    if hasattr(self.session_manager, 'captcha_detected_during_auth') and self.session_manager.captcha_detected_during_auth:
+                        captcha_info = self.session_manager.captcha_info
+                        self.logger.logger.info(f"CAPTCHA detected during authentication: {captcha_info.message}")
                         return ScrapingResult(
                             success=False,
                             jobs=[],
                             session=self.session,
                             error_message=f"CAPTCHA_CHALLENGE: {captcha_info.message}"
                         )
+                    else:
+                        # Use the specific error message if available
+                        error_message = getattr(self, 'last_auth_error', 'LinkedIn authentication failed')
+                        self.logger.logger.info(f"Authentication failed, returning error: {error_message}")
+                        return ScrapingResult(
+                            success=False,
+                            jobs=[],
+                            session=self.session,
+                            error_message=error_message
+                        )
+                
+                # Check for CAPTCHA after authentication - but don't return early if detected
+                # since the user has already solved it during the authentication process
+                if self.driver:
+                    captcha_info = captcha_handler.detect_captcha()
+                    if captcha_info.status.value == 'detected':
+                        self.logger.logger.warning("CAPTCHA detected after authentication - but continuing since user solved it")
+                    else:
+                        self.logger.logger.info("✅ No CAPTCHA detected after authentication")
                 
                 self.logger.logger.info("✅ Authentication successful")
-            elif self.is_authenticated:
-                self.logger.logger.info("✅ Already authenticated")
-                
-                # Step 2: Build and navigate to the search URL
-                self.logger.logger.info("Step 2: Navigating to search URL...")
-                search_url = self.build_search_url(keywords, location, **kwargs)
-                self.logger.logger.info(f"Generated search URL: {search_url}")
-                
-                # Navigate to the search URL
-                self.driver.get(search_url)
-                self._wait_for_page_load()
-                
-                # Wait for search results to load
-                if not self.wait_for_search_results():
-                    return ScrapingResult(
-                        success=False,
-                        jobs=[],
-                        session=self.session,
-                        error_message="Search results failed to load"
-                    )
-                
-                self.logger.logger.info("✅ Successfully navigated to search results")
-                
-                # Step 3: Apply all filters if specified
-                work_arrangement = kwargs.get('work_arrangement')
-                experience_level = kwargs.get('experience_level')
-                job_type = kwargs.get('job_type')
-                
-                if any([date_posted_days, work_arrangement, experience_level, job_type]):
-                    self.logger.logger.info("Step 3: Applying filters...")
-                    if date_posted_days:
-                        self.logger.logger.info(f"  - Date filter: past {date_posted_days} days")
-                    if work_arrangement:
-                        self.logger.logger.info(f"  - Work arrangement: {work_arrangement}")
-                    if experience_level:
-                        self.logger.logger.info(f"  - Experience level: {experience_level}")
-                    if job_type:
-                        self.logger.logger.info(f"  - Job type: {job_type}")
-                    
-                    filters_applied = self.apply_all_filters(
-                        date_posted_days=date_posted_days,
-                        work_arrangement=work_arrangement,
-                        experience_level=experience_level,
-                        job_type=job_type
-                    )
-                    
-                    if filters_applied:
-                        self.logger.logger.info("✅ All filters applied successfully")
-                    else:
-                        self.logger.logger.warning("⚠️ Some filters may have failed - continuing with available results")
-                else:
-                    self.logger.logger.info("Step 3: No filters requested - scraping all jobs")
-                
-                # Step 4: Start scraping jobs
-                self.logger.logger.info("Step 4: Starting job extraction...")
-                
-                # Extract jobs from the search page using right panel approach
-                jobs = self.extract_job_listings_from_page(None)
-                
-                # Note: Additional pages support can be added later if needed
-                # For now, we focus on extracting jobs from the current page
-                
-                # Update session with extracted jobs count
-                self.session.jobs_found = len(jobs)
-                self.session.jobs_processed = len(jobs)
-                
-                self.logger.logger.info(f"✅ Enhanced LinkedIn scraping completed - extracted {len(jobs)} jobs total")
-                
+            
+            # Step 2: Build and navigate to the search URL (for both newly authenticated and already authenticated)
+            self.logger.logger.info("Step 2: Navigating to search URL...")
+            search_url = self.build_search_url(keywords, location, **kwargs)
+            self.logger.logger.info(f"Generated search URL: {search_url}")
+            
+            # Navigate to the search URL
+            self.driver.get(search_url)
+            self._wait_for_page_load()
+            
+            # Wait for search results to load
+            if not self.wait_for_search_results():
                 return ScrapingResult(
-                    success=True,
-                    jobs=jobs,
+                    success=False,
+                    jobs=[],
                     session=self.session,
-                    metadata={
-                        "keywords": keywords,
-                        "location": location,
-                        "date_filter_days": date_posted_days,
-                        "interface_version": self.interface_version,
-                        "jobs_found_on_page": len(jobs),
-                        "current_url": self.driver.current_url,
-                        "authenticated": self.is_authenticated,
-                        "search_url": search_url
-                    }
+                    error_message="Search results failed to load"
                 )
+            
+            self.logger.logger.info("✅ Successfully navigated to search results")
+            
+            # Step 3: Apply all filters if specified
+            work_arrangement = kwargs.get('work_arrangement')
+            experience_level = kwargs.get('experience_level')
+            job_type = kwargs.get('job_type')
+            
+            if any([date_posted_days, work_arrangement, experience_level, job_type]):
+                self.logger.logger.info("Step 3: Applying filters...")
+                if date_posted_days:
+                    self.logger.logger.info(f"  - Date filter: past {date_posted_days} days")
+                if work_arrangement:
+                    self.logger.logger.info(f"  - Work arrangement: {work_arrangement}")
+                if experience_level:
+                    self.logger.logger.info(f"  - Experience level: {experience_level}")
+                if job_type:
+                    self.logger.logger.info(f"  - Job type: {job_type}")
+                
+                filters_applied = self.apply_all_filters(
+                    date_posted_days=date_posted_days,
+                    work_arrangement=work_arrangement,
+                    experience_level=experience_level,
+                    job_type=job_type
+                )
+                
+                if filters_applied:
+                    self.logger.logger.info("✅ All filters applied successfully")
+                else:
+                    self.logger.logger.warning("⚠️ Some filters may have failed - continuing with available results")
+            else:
+                self.logger.logger.info("Step 3: No filters requested - scraping all jobs")
+            
+            # Step 4: Start scraping jobs
+            self.logger.logger.info("Step 4: Starting job extraction...")
+            
+            # Extract jobs from the search page using right panel approach
+            jobs = self.extract_job_listings_from_page(None)
+            
+            # Note: Additional pages support can be added later if needed
+            # For now, we focus on extracting jobs from the current page
+            
+            # Update session with extracted jobs count
+            self.session.jobs_found = len(jobs)
+            self.session.jobs_processed = len(jobs)
+            
+            self.logger.logger.info(f"✅ Enhanced LinkedIn scraping completed - extracted {len(jobs)} jobs total")
+            
+            return ScrapingResult(
+                success=True,
+                jobs=jobs,
+                session=self.session,
+                metadata={
+                    "keywords": keywords,
+                    "location": location,
+                    "date_filter_days": date_posted_days,
+                    "interface_version": self.interface_version,
+                    "jobs_found_on_page": len(jobs),
+                    "current_url": self.driver.current_url,
+                    "authenticated": self.is_authenticated,
+                    "search_url": search_url
+                }
+            )
             
         except Exception as e:
             self.logger.logger.error(f"Exception in scraping method: {e}")
@@ -2611,7 +2618,7 @@ class EnhancedLinkedInScraper(BaseScraper):
                 company=job_data.get('company', ''),
                 location=job_data.get('location', ''),
                 description=job_data.get('description', ''),
-                job_url=job_url,
+                linkedin_url=job_url,
                 posted_date=job_data.get('posted_date'),
                 salary_min=job_data.get('salary_min'),
                 salary_max=job_data.get('salary_max'),
@@ -2687,7 +2694,7 @@ class EnhancedLinkedInScraper(BaseScraper):
                 company=job_data.get('company', ''),
                 location=job_data.get('location', ''),
                 description=job_data.get('description', ''),
-                job_url=job_data.get('url', ''),
+                linkedin_url=job_data.get('url', ''),
                 posted_date=job_data.get('posted_date'),
                 salary_min=job_data.get('salary_min'),
                 salary_max=job_data.get('salary_max'),

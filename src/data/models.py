@@ -186,7 +186,7 @@ class JobListing:
     title: str = ""
     company: str = ""
     location: str = ""
-    job_url: str = ""
+    linkedin_url: str = ""
     job_site: str = ""  # indeed, linkedin, glassdoor, etc.
     
     # Job details
@@ -236,7 +236,7 @@ class JobListing:
             'title': self.title,
             'company': self.company,
             'location': self.location,
-            'job_url': self.job_url,
+            'linkedin_url': self.linkedin_url,
             'job_site': self.job_site,
             'description': self.description,
             'requirements': self.requirements,
@@ -278,7 +278,7 @@ class JobListing:
             title=data.get('title', ''),
             company=data.get('company', ''),
             location=data.get('location', ''),
-            job_url=data.get('job_url', ''),
+            linkedin_url=data.get('linkedin_url', ''),
             job_site=data.get('job_site', ''),
             description=data.get('description', ''),
             requirements=data.get('requirements', []),
@@ -316,7 +316,7 @@ class QualificationResult:
     job_id: str = ""
     job_title: str = ""
     company: str = ""
-    job_url: str = ""
+    linkedin_url: str = ""
     
     # AI Analysis results
     qualification_score: int = 0  # 0-100 score
@@ -363,7 +363,7 @@ class QualificationResult:
             'job_id': self.job_id,
             'job_title': self.job_title,
             'company': self.company,
-            'job_url': self.job_url,
+            'linkedin_url': self.linkedin_url,
             'qualification_score': self.qualification_score,
             'qualification_status': self.qualification_status.value,
             'ai_reasoning': self.ai_reasoning,
@@ -399,7 +399,7 @@ class QualificationResult:
             job_id=data.get('job_id', ''),
             job_title=data.get('job_title', ''),
             company=data.get('company', ''),
-            job_url=data.get('job_url', ''),
+            linkedin_url=data.get('linkedin_url', ''),
             qualification_score=data.get('qualification_score', 0),
             qualification_status=qualification_status,
             ai_reasoning=data.get('ai_reasoning', ''),

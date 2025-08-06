@@ -568,37 +568,62 @@ class SessionManager:
     
     def _handle_security_challenge_during_auth(self) -> bool:
         """
-        Handle security challenges during authentication by waiting for user to complete them manually.
+        Handle security challenges during authentication using the CAPTCHA handler.
         
         Returns:
             True if challenge was handled successfully, False otherwise
         """
         try:
+            from src.utils.captcha_handler import captcha_handler, CAPTCHAStatus
+            
             self.logger.logger.info("🔒 SECURITY CHALLENGE DETECTED")
-            self.logger.logger.info("Please complete the security challenge in the browser window.")
-            self.logger.logger.info("Press Enter in this terminal when you have completed the challenge...")
             
-            # Wait for user to press Enter
-            input("Press Enter when you have completed the security challenge...")
+            # Set up CAPTCHA handler with current driver
+            captcha_handler.set_driver(self.driver)
+            captcha_handler.set_timeout(600)  # 10 minutes timeout
             
-            self.logger.logger.info("User indicated challenge completion. Checking authentication status...")
+            # Detect the specific CAPTCHA
+            captcha_info = captcha_handler.detect_captcha()
             
-            # Wait a moment for the page to update
-            time.sleep(3)
-            
-            # Check if authentication is now successful
-            if self.is_authenticated():
-                # Save cookies after successful authentication
-                self.save_cookies()
-                self.logger.logger.info("✅ Authentication successful after security challenge!")
-                return True
+            if captcha_info.status == CAPTCHAStatus.DETECTED:
+                self.logger.logger.info(f"CAPTCHA detected: {captcha_info.message}")
+                
+                # Additional check: verify if we're actually on a CAPTCHA page
+                # Sometimes normal LinkedIn pages might trigger false positives
+                current_url = self.driver.current_url.lower()
+                page_title = self.driver.title.lower()
+                
+                # Check if we're on a normal LinkedIn page despite CAPTCHA indicators
+                if ("linkedin.com" in current_url and 
+                    ("feed" in current_url or "jobs" in current_url or "mynetwork" in current_url) and
+                    "captcha" not in page_title and "challenge" not in page_title):
+                    
+                    self.logger.logger.info("CAPTCHA detected but appears to be on normal LinkedIn page - treating as false positive")
+                    return True  # Continue with authentication
+                
+                # For web application context, we need to return a special status
+                # instead of waiting for user input
+                self.logger.logger.info("CAPTCHA detected during authentication - returning special status for web app")
+                
+                # Set a special attribute to indicate CAPTCHA was detected
+                self.captcha_detected_during_auth = True
+                self.captcha_info = captcha_info
+                
+                return False  # Return False to indicate authentication needs CAPTCHA handling
             else:
-                self.logger.logger.warning("Authentication still not successful after challenge completion")
+                self.logger.logger.warning("Security challenge detected but CAPTCHA not properly identified")
                 return False
             
         except Exception as e:
             self.logger.logger.error(f"Error handling security challenge: {e}")
             return False
+    
+    def clear_captcha_flags(self) -> None:
+        """Clear CAPTCHA detection flags after handling."""
+        if hasattr(self, 'captcha_detected_during_auth'):
+            delattr(self, 'captcha_detected_during_auth')
+        if hasattr(self, 'captcha_info'):
+            delattr(self, 'captcha_info')
     
     def get_session_info(self, session_id: str = None) -> Dict[str, Any]:
         """

@@ -41,6 +41,7 @@ from src.data.resume_manager import ResumeManager
 
 
 from src.utils.logger import JobAutomationLogger
+from src.utils.captcha_handler import CAPTCHAStatus
 
 # Supabase integration
 from src.auth.flask_integration import get_auth_manager, supabase_integration, get_current_user, get_user_id, get_db_manager, get_authenticated_db_manager
@@ -455,9 +456,9 @@ def analyze_jobs():
         if not user:
             return jsonify({'success': False, 'error': 'User not authenticated'})
         
-        job_url = request.form.get('job_url', '').strip()
+        linkedin_url = request.form.get('linkedin_url', '').strip()
         
-        if not job_url:
+        if not linkedin_url:
             return jsonify({'success': False, 'error': 'Job URL is required'})
         
         # Get profile data for analysis using authenticated database manager
@@ -491,7 +492,7 @@ def analyze_jobs():
         
         # Process job URL
         if job_processor:
-            processed_url = job_processor.process_url(job_url)
+            processed_url = job_processor.process_url(linkedin_url)
             
             # Analyze job with AI
             if qualification_analyzer:
@@ -532,10 +533,404 @@ def analyze_jobs():
         return jsonify({'success': False, 'error': str(e)})
 
 
+# @app.route('/search/linkedin', methods=['POST'])
+# @login_required
+# def search_linkedin_jobs():
+#     """Search LinkedIn jobs and save to database."""
+#     try:
+#         user = get_current_user()
+#         if not user:
+#             return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+#         keywords = request.form.get('keywords', '').strip()
+#         location = request.form.get('location', '').strip()
+#         max_jobs = int(request.form.get('max_jobs', 10))
+        
+#         if not keywords:
+#             return jsonify({'success': False, 'error': 'Keywords are required'})
+        
+#         # Create search record using authenticated database manager
+#         db_manager = get_authenticated_db_manager()
+#         if not db_manager:
+#             return jsonify({'success': False, 'error': 'Database not available or user not authenticated'})
+        
+#         # Ensure user profile exists (create if it doesn't)
+#         user_profile = db_manager.profiles.get_profile(user['user_id'])
+#         if not user_profile:
+#             # Create a basic user profile if it doesn't exist
+#             basic_profile_data = {
+#                 'experience_level': 'entry',
+#                 'education_level': 'bachelors',
+#                 'years_of_experience': 0,
+#                 'work_arrangement_preference': 'any'
+#             }
+#             success, message, profile = db_manager.profiles.create_profile(user['user_id'], basic_profile_data)
+#             if not success:
+#                 return jsonify({'success': False, 'error': f'Failed to create user profile: {message}'})
+#             logger.info(f"Created basic user profile for user {user['user_id']}")
+        
+#         # Check and process resume if available
+#         if resume_manager:
+#             try:
+#                 resume_status = resume_manager.get_resume_status(user['user_id'])
+#                 if resume_status['has_resume'] and not resume_status['is_processed']:
+#                     logger.info(f"Processing resume for user {user['user_id']}")
+#                     processed_resume = resume_manager.ensure_resume_processed(user['user_id'])
+#                     if processed_resume:
+#                         logger.info(f"Resume processed successfully for user {user['user_id']}")
+#                     else:
+#                         logger.warning(f"Failed to process resume for user {user['user_id']}")
+#                 elif resume_status['has_resume'] and resume_status['is_processed']:
+#                     logger.info(f"Resume already processed for user {user['user_id']}")
+#                 else:
+#                     logger.info(f"No resume found for user {user['user_id']}")
+#             except Exception as e:
+#                 logger.error(f"Error processing resume for user {user['user_id']}: {e}")
+        
+#         # Convert keywords to array format for database
+#         keywords_array = [keywords] if keywords else []
+        
+#         search_data = {
+#             'user_id': user['user_id'],
+#             'keywords': keywords_array,
+#             'location': location,
+#             'filters': {},
+#             'results_count': 0,
+#             'search_date': datetime.now().isoformat()
+#         }
+        
+#         success, message, search_record = db_manager.searches.create_search(search_data)
+        
+#         if not success:
+#             return jsonify({'success': False, 'error': f'Failed to create search record: {message}'})
+        
+#         # Implement actual LinkedIn scraping
+#         try:
+#             # Initialize config manager first
+#             from src.config.config_manager import ConfigurationManager
+#             config_manager = ConfigurationManager()
+            
+#             # Get LinkedIn credentials from config
+#             linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
+#             linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
+            
+#             if not linkedin_username or not linkedin_password:
+#                 logger.warning("LinkedIn credentials not configured, using mock data")
+#                 # Fall back to mock data if credentials not available
+#                 mock_jobs = [
+#                     {
+#                         'job_title': f'Software Engineer - {keywords}',
+#                         'company_name': 'Tech Company',
+#                         'location': location or 'Remote',
+#                         'job_description': f'Looking for a {keywords} developer...',
+#                         'job_url': 'https://example.com/job1',
+#                         'date_posted': datetime.now().isoformat(),
+#                         'work_arrangement': 'Remote',
+#                         'experience_level': 'Mid-level',
+#                         'job_type': 'Full-time'
+#                     }
+#                 ]
+                
+#                 # Save mock jobs to database
+#                 saved_jobs = []
+#                 for job_data in mock_jobs:
+#                     job_data['user_id'] = user['user_id']
+#                     job_data['date_found'] = datetime.now().isoformat()
+                    
+#                     success, message, job = db_manager.jobs.create_job(job_data)
+#                     if success and job:
+#                         saved_jobs.append(job)
+                
+#                 # Update search results count
+#                 db_manager.searches.update_search_results(search_record.search_id, user['user_id'], len(saved_jobs))
+                
+#                 return jsonify({
+#                     'success': True,
+#                     'message': f'Found and saved {len(saved_jobs)} jobs (mock data - LinkedIn credentials not configured)',
+#                     'jobs_count': len(saved_jobs),
+#                     'search_id': search_record.search_id
+#                 })
+            
+#             # Import search strategy manager and CAPTCHA handler
+#             from src.utils.search_strategy_manager import search_strategy_manager
+#             from src.utils.captcha_handler import captcha_handler
+            
+#             # Get additional filters from request
+#             date_posted = request.form.get('date_posted')
+#             work_arrangement = request.form.get('work_arrangement')
+#             experience_level = request.form.get('experience_level')
+#             job_type = request.form.get('job_type')
+            
+#             # Convert date_posted to days
+#             date_posted_days = None
+#             if date_posted and date_posted != 'any':
+#                 date_mapping = {
+#                     '1': 1,
+#                     '3': 3,
+#                     '7': 7,
+#                     '14': 14,
+#                     '30': 30
+#                 }
+#                 date_posted_days = date_mapping.get(date_posted)
+            
+#             # Determine search strategy based on filters
+#             search_params = search_strategy_manager.create_search_parameters_from_dict({
+#                 'keywords': [keywords],
+#                 'location': location,
+#                 'date_posted_days': date_posted_days,
+#                 'work_arrangement': work_arrangement,
+#                 'experience_level': experience_level,
+#                 'job_type': job_type
+#             })
+            
+#             strategy_info = search_strategy_manager.get_search_strategy_info(search_params)
+#             logger.info(f"Search strategy: {strategy_info['method']} - {strategy_info['reason']}")
+            
+#             # Choose appropriate scraper based on strategy
+#             if strategy_info['method'] == 'api_only':
+#                 # Use API-only scraper for basic searches
+#                 from src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
+#                 from src.scrapers.base_scraper import ScrapingConfig
+                
+#                 # Create proper ScrapingConfig for API scraper
+#                 scraping_settings = config_manager.get_scraping_settings()
+#                 scraping_config = ScrapingConfig(
+#                     site_name="linkedin",
+#                     base_url="https://www.linkedin.com",
+#                     delay_min=scraping_settings.delay_min,
+#                     delay_max=scraping_settings.delay_max,
+#                     max_jobs_per_session=scraping_settings.max_jobs_per_session,
+#                     respect_robots_txt=scraping_settings.respect_robots_txt,
+#                     request_timeout=scraping_settings.timeout,
+#                     max_retries=scraping_settings.retry_attempts
+#                 )
+#                 scraper = create_linkedin_api_scraper(scraping_config)
+#                 logger.info("Using API-only scraper for fast execution")
+#             else:
+#                 # Use WebDriver scraper for advanced searches
+#                 from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+                
+#                 scraper = create_enhanced_linkedin_scraper(
+#                     username=linkedin_username,
+#                     password=linkedin_password,
+#                     use_persistent_session=True
+#                 )
+#                 logger.info("Using WebDriver scraper for advanced filters")
+            
+#             # Prepare search parameters
+#             search_keywords = [keywords] if keywords else []
+#             search_location = location or ""
+            
+#             logger.info(f"Starting LinkedIn scraping for keywords: {search_keywords} in {search_location}")
+            
+#             # Perform the scraping
+#             if strategy_info['method'] == 'api_only':
+#                 # Use API-only scraping method
+#                 scraping_result = scraper.scrape_jobs(
+#                     keywords=search_keywords,
+#                     location=search_location
+#                 )
+#             else:
+#                 # Use WebDriver scraping method with enhanced date filter
+#                 scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
+#                     keywords=search_keywords,
+#                     location=search_location,
+#                     date_posted_days=date_posted_days,
+#                     work_arrangement=work_arrangement,
+#                     experience_level=experience_level,
+#                     job_type=job_type
+#                 )
+            
+#             if not scraping_result.success:
+#                 # Check if it's a CAPTCHA challenge
+#                 if "captcha" in scraping_result.error_message.lower() or "puzzle" in scraping_result.error_message.lower():
+#                     return jsonify({
+#                         'error': 'CAPTCHA_CHALLENGE',
+#                         'message': 'LinkedIn requires manual verification. Please complete the security challenge in the browser window and try again.',
+#                         'requires_manual_intervention': True,
+#                         'strategy_info': strategy_info
+#                     })
+                
+#                 logger.error(f"LinkedIn scraping failed: {scraping_result.error_message}")
+#                 return jsonify({
+#                     'success': False,
+#                     'error': f'LinkedIn scraping failed: {scraping_result.error_message}',
+#                     'strategy_info': strategy_info
+#                 })
+            
+#             # Convert scraped jobs to database format
+#             saved_jobs = []
+#             for job_listing in scraping_result.jobs:
+#                 job_data = {
+#                     'user_id': user['user_id'],
+#                     'job_title': job_listing.title,
+#                     'company_name': job_listing.company,
+#                     'location': job_listing.location,
+#                     'job_description': job_listing.description,
+#                     'job_url': job_listing.job_url,
+#                     'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
+#                     'work_arrangement': job_listing.remote_type,
+#                     'experience_level': job_listing.experience_level,
+#                     'job_type': job_listing.job_type,
+#                     'date_found': datetime.now().isoformat()
+#                 }
+                
+#                 success, message, job = db_manager.jobs.create_job(job_data)
+#                 if success and job:
+#                     saved_jobs.append(job)
+#                     logger.info(f"Saved job: {job_listing.title} at {job_listing.company}")
+#                 else:
+#                     logger.warning(f"Failed to save job: {message}")
+            
+#             # Update search results count
+#             db_manager.searches.update_search_results(search_record.search_id, user['user_id'], len(saved_jobs))
+            
+#             # Clean up scraper
+#             scraper.cleanup()
+            
+#             return jsonify({
+#                 'success': True,
+#                 'message': f'Found and saved {len(saved_jobs)} jobs from LinkedIn',
+#                 'jobs_count': len(saved_jobs),
+#                 'search_id': search_record.search_id,
+#                 'scraping_metadata': scraping_result.metadata,
+#                 'strategy_info': strategy_info
+#             })
+            
+#         except Exception as e:
+#             logger.error(f"Error during LinkedIn scraping: {e}")
+#             return jsonify({
+#                 'success': False,
+#                 'error': f'LinkedIn scraping error: {str(e)}'
+#             })
+        
+#     except Exception as e:
+#         logger.error(f"LinkedIn search error: {e}")
+#         return jsonify({'success': False, 'error': str(e)})
+
+
+# @app.route('/search/linkedin/captcha', methods=['POST'])
+# @login_required
+# def continue_after_captcha():
+#     """Continue LinkedIn search after CAPTCHA has been solved."""
+#     try:
+#         user = get_current_user()
+#         if not user:
+#             return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+#         # Get original search parameters from session or request
+#         keywords = request.form.get('keywords', '').strip()
+#         location = request.form.get('location', '').strip()
+#         date_posted = request.form.get('date_posted')
+#         work_arrangement = request.form.get('work_arrangement')
+#         experience_level = request.form.get('experience_level')
+#         job_type = request.form.get('job_type')
+        
+#         if not keywords:
+#             return jsonify({'success': False, 'error': 'Keywords are required'})
+        
+#         # Get LinkedIn credentials
+#         from src.config.config_manager import ConfigurationManager
+#         config_manager = ConfigurationManager()
+#         linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
+#         linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
+        
+#         if not linkedin_username or not linkedin_password:
+#             return jsonify({'success': False, 'error': 'LinkedIn credentials not configured'})
+        
+#         # Import required modules
+#         from src.utils.search_strategy_manager import search_strategy_manager
+#         from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+        
+#         # Convert date_posted to days
+#         date_posted_days = None
+#         if date_posted and date_posted != 'any':
+#             date_mapping = {
+#                 '1': 1, '3': 3, '7': 7, '14': 14, '30': 30
+#             }
+#             date_posted_days = date_mapping.get(date_posted)
+        
+#         # Create search parameters
+#         search_params = search_strategy_manager.create_search_parameters_from_dict({
+#             'keywords': [keywords],
+#             'location': location,
+#             'date_posted_days': date_posted_days,
+#             'work_arrangement': work_arrangement,
+#             'experience_level': experience_level,
+#             'job_type': job_type
+#         })
+        
+#         # Create WebDriver scraper for CAPTCHA continuation
+#         scraper = create_enhanced_linkedin_scraper(
+#             username=linkedin_username,
+#             password=linkedin_password,
+#             use_persistent_session=True
+#         )
+        
+#         # Prepare search parameters
+#         search_keywords = [keywords] if keywords else []
+#         search_location = location or ""
+        
+#         # Perform the scraping with WebDriver (since CAPTCHA was solved)
+#         scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
+#             keywords=search_keywords,
+#             location=search_location,
+#             date_posted_days=date_posted_days,
+#             work_arrangement=work_arrangement,
+#             experience_level=experience_level,
+#             job_type=job_type
+#         )
+        
+#         if not scraping_result.success:
+#             logger.error(f"LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}")
+#             return jsonify({
+#                 'success': False,
+#                 'error': f'LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}'
+#             })
+        
+#         # Convert scraped jobs to database format and save
+#         db_manager = get_authenticated_db_manager()
+#         if not db_manager:
+#             return jsonify({'success': False, 'error': 'Database not available'})
+        
+#         saved_jobs = []
+#         for job_listing in scraping_result.jobs:
+#             job_data = {
+#                 'user_id': user['user_id'],
+#                 'job_title': job_listing.title,
+#                 'company_name': job_listing.company,
+#                 'location': job_listing.location,
+#                 'job_description': job_listing.description,
+#                 'job_url': job_listing.job_url,
+#                 'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
+#                 'work_arrangement': job_listing.remote_type,
+#                 'experience_level': job_listing.experience_level,
+#                 'job_type': job_listing.job_type,
+#                 'date_found': datetime.now().isoformat()
+#             }
+            
+#             success, message, job = db_manager.jobs.create_job(job_data)
+#             if success and job:
+#                 saved_jobs.append(job)
+        
+#         # Clean up scraper
+#         scraper.cleanup()
+        
+#         return jsonify({
+#             'success': True,
+#             'message': f'Successfully found and saved {len(saved_jobs)} jobs after CAPTCHA verification',
+#             'jobs_count': len(saved_jobs),
+#             'captcha_solved': True
+#         })
+        
+#     except Exception as e:
+#         logger.error(f"CAPTCHA continuation error: {e}")
+#         return jsonify({'success': False, 'error': f'CAPTCHA continuation failed: {str(e)}'})
+
 @app.route('/search/linkedin', methods=['POST'])
 @login_required
 def search_linkedin_jobs():
-    """Search LinkedIn jobs and save to database."""
+    """Search LinkedIn jobs and save to database with proper CAPTCHA handling."""
     try:
         user = get_current_user()
         if not user:
@@ -556,7 +951,6 @@ def search_linkedin_jobs():
         # Ensure user profile exists (create if it doesn't)
         user_profile = db_manager.profiles.get_profile(user['user_id'])
         if not user_profile:
-            # Create a basic user profile if it doesn't exist
             basic_profile_data = {
                 'experience_level': 'entry',
                 'education_level': 'bachelors',
@@ -603,7 +997,7 @@ def search_linkedin_jobs():
         if not success:
             return jsonify({'success': False, 'error': f'Failed to create search record: {message}'})
         
-        # Implement actual LinkedIn scraping
+        # Implement actual LinkedIn scraping with proper CAPTCHA handling
         try:
             # Initialize config manager first
             from src.config.config_manager import ConfigurationManager
@@ -615,14 +1009,15 @@ def search_linkedin_jobs():
             
             if not linkedin_username or not linkedin_password:
                 logger.warning("LinkedIn credentials not configured, using mock data")
-                # Fall back to mock data if credentials not available
+                # Fall back to mock data (existing code remains the same)
                 mock_jobs = [
                     {
                         'job_title': f'Software Engineer - {keywords}',
                         'company_name': 'Tech Company',
                         'location': location or 'Remote',
                         'job_description': f'Looking for a {keywords} developer...',
-                        'job_url': 'https://example.com/job1',
+                        'linkedin_url': 'https://www.linkedin.com/jobs/view/example1',
+                        'job_url': '',  # Clear job_url field
                         'date_posted': datetime.now().isoformat(),
                         'work_arrangement': 'Remote',
                         'experience_level': 'Mid-level',
@@ -630,7 +1025,6 @@ def search_linkedin_jobs():
                     }
                 ]
                 
-                # Save mock jobs to database
                 saved_jobs = []
                 for job_data in mock_jobs:
                     job_data['user_id'] = user['user_id']
@@ -640,7 +1034,6 @@ def search_linkedin_jobs():
                     if success and job:
                         saved_jobs.append(job)
                 
-                # Update search results count
                 db_manager.searches.update_search_results(search_record.search_id, user['user_id'], len(saved_jobs))
                 
                 return jsonify({
@@ -663,13 +1056,7 @@ def search_linkedin_jobs():
             # Convert date_posted to days
             date_posted_days = None
             if date_posted and date_posted != 'any':
-                date_mapping = {
-                    '1': 1,
-                    '3': 3,
-                    '7': 7,
-                    '14': 14,
-                    '30': 30
-                }
+                date_mapping = {'1': 1, '3': 3, '7': 7, '14': 14, '30': 30}
                 date_posted_days = date_mapping.get(date_posted)
             
             # Determine search strategy based on filters
@@ -686,12 +1073,12 @@ def search_linkedin_jobs():
             logger.info(f"Search strategy: {strategy_info['method']} - {strategy_info['reason']}")
             
             # Choose appropriate scraper based on strategy
+            scraper = None
             if strategy_info['method'] == 'api_only':
                 # Use API-only scraper for basic searches
                 from src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
                 from src.scrapers.base_scraper import ScrapingConfig
                 
-                # Create proper ScrapingConfig for API scraper
                 scraping_settings = config_manager.get_scraping_settings()
                 scraping_config = ScrapingConfig(
                     site_name="linkedin",
@@ -705,8 +1092,18 @@ def search_linkedin_jobs():
                 )
                 scraper = create_linkedin_api_scraper(scraping_config)
                 logger.info("Using API-only scraper for fast execution")
+                
+                # Perform API-only scraping (no CAPTCHA handling needed)
+                search_keywords = [keywords] if keywords else []
+                search_location = location or ""
+                
+                scraping_result = scraper.scrape_jobs(
+                    keywords=search_keywords,
+                    location=search_location
+                )
+                
             else:
-                # Use WebDriver scraper for advanced searches
+                # Use WebDriver scraper for advanced searches with CAPTCHA handling
                 from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
                 
                 scraper = create_enhanced_linkedin_scraper(
@@ -714,46 +1111,196 @@ def search_linkedin_jobs():
                     password=linkedin_password,
                     use_persistent_session=True
                 )
-                logger.info("Using WebDriver scraper for advanced filters")
+                
+                # PROPER CAPTCHA INTEGRATION: Set up CAPTCHA handler BEFORE scraping
+                if hasattr(scraper, 'driver') and scraper.driver:
+                    captcha_handler.set_driver(scraper.driver)
+                    captcha_handler.set_timeout(600)  # 10 minutes timeout
+                    logger.info("CAPTCHA handler configured with WebDriver")
+                    
+                    # Check for CAPTCHA immediately after driver setup
+                    captcha_info = captcha_handler.detect_captcha()
+                    
+                    if captcha_info.status == CAPTCHAStatus.DETECTED:
+                        logger.warning(f"CAPTCHA detected before scraping: {captcha_info.message}")
+                        
+                        # Return proper CAPTCHA challenge response
+                        instructions = captcha_handler._generate_user_instructions(captcha_info)
+                        
+                        return jsonify({
+                            'success': False,
+                            'error': 'CAPTCHA_CHALLENGE',
+                            'captcha_detected': True,
+                            'captcha_info': {
+                                'type': captcha_info.captcha_type,
+                                'message': captcha_info.message,
+                                'timeout_seconds': captcha_info.timeout_seconds
+                            },
+                            'instructions': instructions,
+                            'requires_manual_intervention': True,
+                            'strategy_info': strategy_info,
+                            'search_params': {
+                                'keywords': keywords,
+                                'location': location,
+                                'date_posted': date_posted,
+                                'work_arrangement': work_arrangement,
+                                'experience_level': experience_level,
+                                'job_type': job_type
+                            }
+                        })
+                
+                logger.info("Using WebDriver scraper for advanced filters with CAPTCHA handling")
+                
+                # ENHANCED CAPTCHA HANDLING: Check for CAPTCHA during authentication
+                # The scraper will handle authentication internally, but we need to catch CAPTCHA challenges
+                try:
+                    # Prepare search parameters
+                    search_keywords = [keywords] if keywords else []
+                    search_location = location or ""
+                    
+                    # Perform WebDriver scraping with CAPTCHA monitoring
+                    scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
+                        keywords=search_keywords,
+                        location=search_location,
+                        date_posted_days=date_posted_days,
+                        work_arrangement=work_arrangement,
+                        experience_level=experience_level,
+                        job_type=job_type
+                    )
+                    
+                    # Check if the result indicates a CAPTCHA challenge
+                    if not scraping_result.success and 'CAPTCHA_CHALLENGE' in scraping_result.error_message:
+                        logger.warning("CAPTCHA challenge detected during scraping")
+                        
+                        # Get current CAPTCHA info
+                        captcha_info = captcha_handler.detect_captcha()
+                        instructions = captcha_handler._generate_user_instructions(captcha_info)
+                        
+                        return jsonify({
+                            'success': False,
+                            'error': 'CAPTCHA_CHALLENGE',
+                            'captcha_detected': True,
+                            'captcha_info': {
+                                'type': captcha_info.captcha_type,
+                                'message': captcha_info.message,
+                                'timeout_seconds': captcha_info.timeout_seconds
+                            },
+                            'instructions': instructions,
+                            'requires_manual_intervention': True,
+                            'strategy_info': strategy_info,
+                            'search_params': {
+                                'keywords': keywords,
+                                'location': location,
+                                'date_posted': date_posted,
+                                'work_arrangement': work_arrangement,
+                                'experience_level': experience_level,
+                                'job_type': job_type
+                            }
+                        })
+                    
+                except Exception as scraping_error:
+                    # Check for CAPTCHA if scraping fails
+                    if hasattr(scraper, 'driver') and scraper.driver:
+                        captcha_info = captcha_handler.detect_captcha()
+                        
+                        if captcha_info.status == CAPTCHAStatus.DETECTED:
+                            logger.warning(f"CAPTCHA detected during scraping error: {captcha_info.message}")
+                            
+                            instructions = captcha_handler._generate_user_instructions(captcha_info)
+                            
+                            return jsonify({
+                                'success': False,
+                                'error': 'CAPTCHA_CHALLENGE',
+                                'captcha_detected': True,
+                                'captcha_info': {
+                                    'type': captcha_info.captcha_type,
+                                    'message': captcha_info.message,
+                                    'timeout_seconds': captcha_info.timeout_seconds
+                                },
+                                'instructions': instructions,
+                                'requires_manual_intervention': True,
+                                'strategy_info': strategy_info,
+                                'search_params': {
+                                    'keywords': keywords,
+                                    'location': location,
+                                    'date_posted': date_posted,
+                                    'work_arrangement': work_arrangement,
+                                    'experience_level': experience_level,
+                                    'job_type': job_type
+                                }
+                            })
+                    
+                    # Re-raise if not CAPTCHA-related
+                    raise scraping_error
             
-            # Prepare search parameters
-            search_keywords = [keywords] if keywords else []
-            search_location = location or ""
-            
-            logger.info(f"Starting LinkedIn scraping for keywords: {search_keywords} in {search_location}")
-            
-            # Perform the scraping
-            if strategy_info['method'] == 'api_only':
-                # Use API-only scraping method
-                scraping_result = scraper.scrape_jobs(
-                    keywords=search_keywords,
-                    location=search_location
-                )
-            else:
-                # Use WebDriver scraping method with enhanced date filter
-                scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
-                    keywords=search_keywords,
-                    location=search_location,
-                    date_posted_days=date_posted_days,
-                    work_arrangement=work_arrangement,
-                    experience_level=experience_level,
-                    job_type=job_type
-                )
-            
-            if not scraping_result.success:
-                # Check if it's a CAPTCHA challenge
-                if "captcha" in scraping_result.error_message.lower() or "puzzle" in scraping_result.error_message.lower():
+            # Handle scraping results
+            if not scraping_result or not scraping_result.success:
+                # Check if the error is CAPTCHA-related
+                if scraping_result and 'CAPTCHA_CHALLENGE' in scraping_result.error_message:
+                    logger.warning("CAPTCHA challenge detected in scraping result")
+                    
+                    # Get current CAPTCHA info
+                    captcha_info = captcha_handler.detect_captcha()
+                    instructions = captcha_handler._generate_user_instructions(captcha_info)
+                    
                     return jsonify({
+                        'success': False,
                         'error': 'CAPTCHA_CHALLENGE',
-                        'message': 'LinkedIn requires manual verification. Please complete the security challenge in the browser window and try again.',
+                        'captcha_detected': True,
+                        'captcha_info': {
+                            'type': captcha_info.captcha_type,
+                            'message': captcha_info.message,
+                            'timeout_seconds': captcha_info.timeout_seconds
+                        },
+                        'instructions': instructions,
                         'requires_manual_intervention': True,
-                        'strategy_info': strategy_info
+                        'strategy_info': strategy_info,
+                        'search_params': {
+                            'keywords': keywords,
+                            'location': location,
+                            'date_posted': date_posted,
+                            'work_arrangement': work_arrangement,
+                            'experience_level': experience_level,
+                            'job_type': job_type
+                        }
                     })
                 
-                logger.error(f"LinkedIn scraping failed: {scraping_result.error_message}")
+                # Final CAPTCHA check for WebDriver failures
+                if strategy_info['method'] == 'webdriver' and hasattr(scraper, 'driver') and scraper.driver:
+                    captcha_info = captcha_handler.detect_captcha()
+                    
+                    if captcha_info.status == CAPTCHAStatus.DETECTED:
+                        logger.warning(f"CAPTCHA detected after scraping failure: {captcha_info.message}")
+                        
+                        instructions = captcha_handler._generate_user_instructions(captcha_info)
+                        
+                        return jsonify({
+                            'success': False,
+                            'error': 'CAPTCHA_CHALLENGE',
+                            'captcha_detected': True,
+                            'captcha_info': {
+                                'type': captcha_info.captcha_type,
+                                'message': captcha_info.message,
+                                'timeout_seconds': captcha_info.timeout_seconds
+                            },
+                            'instructions': instructions,
+                            'requires_manual_intervention': True,
+                            'strategy_info': strategy_info,
+                            'search_params': {
+                                'keywords': keywords,
+                                'location': location,
+                                'date_posted': date_posted,
+                                'work_arrangement': work_arrangement,
+                                'experience_level': experience_level,
+                                'job_type': job_type
+                            }
+                        })
+                
+                error_msg = scraping_result.error_message if scraping_result else "Unknown scraping error"
+                logger.error(f"LinkedIn scraping failed: {error_msg}")
                 return jsonify({
                     'success': False,
-                    'error': f'LinkedIn scraping failed: {scraping_result.error_message}',
+                    'error': f'LinkedIn scraping failed: {error_msg}',
                     'strategy_info': strategy_info
                 })
             
@@ -766,7 +1313,8 @@ def search_linkedin_jobs():
                     'company_name': job_listing.company,
                     'location': job_listing.location,
                     'job_description': job_listing.description,
-                    'job_url': job_listing.job_url,
+                    'linkedin_url': job_listing.linkedin_url,  # Use linkedin_url field
+                    'job_url': '',  # Clear job_url field to avoid confusion
                     'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
                     'work_arrangement': job_listing.remote_type,
                     'experience_level': job_listing.experience_level,
@@ -785,7 +1333,8 @@ def search_linkedin_jobs():
             db_manager.searches.update_search_results(search_record.search_id, user['user_id'], len(saved_jobs))
             
             # Clean up scraper
-            scraper.cleanup()
+            if scraper:
+                scraper.cleanup()
             
             return jsonify({
                 'success': True,
@@ -811,13 +1360,13 @@ def search_linkedin_jobs():
 @app.route('/search/linkedin/captcha', methods=['POST'])
 @login_required
 def continue_after_captcha():
-    """Continue LinkedIn search after CAPTCHA has been solved."""
+    """Continue LinkedIn search after CAPTCHA has been solved using proper CAPTCHA handler."""
     try:
         user = get_current_user()
         if not user:
             return jsonify({'success': False, 'error': 'User not authenticated'})
         
-        # Get original search parameters from session or request
+        # Get original search parameters from request
         keywords = request.form.get('keywords', '').strip()
         location = request.form.get('location', '').strip()
         date_posted = request.form.get('date_posted')
@@ -839,92 +1388,241 @@ def continue_after_captcha():
         
         # Import required modules
         from src.utils.search_strategy_manager import search_strategy_manager
+        from src.utils.captcha_handler import captcha_handler
         from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
         
         # Convert date_posted to days
         date_posted_days = None
         if date_posted and date_posted != 'any':
-            date_mapping = {
-                '1': 1, '3': 3, '7': 7, '14': 14, '30': 30
-            }
+            date_mapping = {'1': 1, '3': 3, '7': 7, '14': 14, '30': 30}
             date_posted_days = date_mapping.get(date_posted)
         
-        # Create search parameters
-        search_params = search_strategy_manager.create_search_parameters_from_dict({
-            'keywords': [keywords],
-            'location': location,
-            'date_posted_days': date_posted_days,
-            'work_arrangement': work_arrangement,
-            'experience_level': experience_level,
-            'job_type': job_type
-        })
-        
         # Create WebDriver scraper for CAPTCHA continuation
-        scraper = create_enhanced_linkedin_scraper(
-            username=linkedin_username,
-            password=linkedin_password,
-            use_persistent_session=True
-        )
-        
-        # Prepare search parameters
-        search_keywords = [keywords] if keywords else []
-        search_location = location or ""
-        
-        # Perform the scraping with WebDriver (since CAPTCHA was solved)
-        scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
-            keywords=search_keywords,
-            location=search_location,
-            date_posted_days=date_posted_days,
-            work_arrangement=work_arrangement,
-            experience_level=experience_level,
-            job_type=job_type
-        )
-        
-        if not scraping_result.success:
-            logger.error(f"LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}")
-            return jsonify({
-                'success': False,
-                'error': f'LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}'
-            })
-        
-        # Convert scraped jobs to database format and save
-        db_manager = get_authenticated_db_manager()
-        if not db_manager:
-            return jsonify({'success': False, 'error': 'Database not available'})
-        
-        saved_jobs = []
-        for job_listing in scraping_result.jobs:
-            job_data = {
-                'user_id': user['user_id'],
-                'job_title': job_listing.title,
-                'company_name': job_listing.company,
-                'location': job_listing.location,
-                'job_description': job_listing.description,
-                'job_url': job_listing.job_url,
-                'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
-                'work_arrangement': job_listing.remote_type,
-                'experience_level': job_listing.experience_level,
-                'job_type': job_listing.job_type,
-                'date_found': datetime.now().isoformat()
-            }
+        scraper = None
+        try:
+            scraper = create_enhanced_linkedin_scraper(
+                username=linkedin_username,
+                password=linkedin_password,
+                use_persistent_session=True
+            )
             
-            success, message, job = db_manager.jobs.create_job(job_data)
-            if success and job:
-                saved_jobs.append(job)
-        
-        # Clean up scraper
-        scraper.cleanup()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully found and saved {len(saved_jobs)} jobs after CAPTCHA verification',
-            'jobs_count': len(saved_jobs),
-            'captcha_solved': True
-        })
+            # PROPER CAPTCHA INTEGRATION: Set up CAPTCHA handler properly
+            if hasattr(scraper, 'driver') and scraper.driver:
+                captcha_handler.set_driver(scraper.driver)
+                captcha_handler.set_timeout(600)  # 10 minutes timeout
+                logger.info("CAPTCHA handler configured for continuation")
+                
+                # Detect current CAPTCHA status
+                captcha_info = captcha_handler.detect_captcha()
+                
+                if captcha_info.status == CAPTCHAStatus.DETECTED:
+                    logger.info("CAPTCHA still detected, checking if it has been solved...")
+                    
+                    # Use the non-blocking method to check if CAPTCHA has been solved
+                    solved_status = captcha_handler.check_captcha_solved(captcha_info)
+                    
+                    if solved_status.status == CAPTCHAStatus.SOLVED:
+                        logger.info("CAPTCHA has been solved, proceeding with scraping")
+                    elif solved_status.status == CAPTCHAStatus.DETECTED:
+                        logger.info("CAPTCHA still needs to be solved by user")
+                        instructions = captcha_handler._generate_user_instructions(captcha_info)
+                        
+                        return jsonify({
+                            'success': False,
+                            'error': 'CAPTCHA_CHALLENGE',
+                            'captcha_detected': True,
+                            'captcha_info': {
+                                'type': captcha_info.captcha_type,
+                                'message': captcha_info.message,
+                                'timeout_seconds': captcha_info.timeout_seconds
+                            },
+                            'instructions': instructions,
+                            'requires_manual_intervention': True,
+                            'message': 'Please complete the CAPTCHA challenge in the browser window'
+                        })
+                    else:
+                        logger.error(f"CAPTCHA status error: {solved_status.message}")
+                        return jsonify({
+                            'success': False,
+                            'error': 'CAPTCHA_ERROR',
+                            'message': f'CAPTCHA status check failed: {solved_status.message}'
+                        })
+                    
+                elif captcha_info.status == CAPTCHAStatus.NOT_DETECTED:
+                    logger.info("No CAPTCHA detected, proceeding with scraping")
+                    
+                else:
+                    logger.error(f"CAPTCHA detection error: {captcha_info.message}")
+                    return jsonify({
+                        'success': False,
+                        'error': 'CAPTCHA_ERROR',
+                        'message': f'CAPTCHA detection failed: {captcha_info.message}'
+                    })
+            
+            # Prepare search parameters
+            search_keywords = [keywords] if keywords else []
+            search_location = location or ""
+            
+            logger.info(f"Proceeding with scraping after CAPTCHA handling: {search_keywords} in {search_location}")
+            
+            # Perform the scraping with WebDriver
+            scraping_result = scraper.scrape_jobs_with_enhanced_date_filter(
+                keywords=search_keywords,
+                location=search_location,
+                date_posted_days=date_posted_days,
+                work_arrangement=work_arrangement,
+                experience_level=experience_level,
+                job_type=job_type
+            )
+            
+            if not scraping_result.success:
+                # Check for new CAPTCHA after scraping attempt
+                captcha_info = captcha_handler.detect_captcha()
+                
+                if captcha_info.status == CAPTCHAStatus.DETECTED:
+                    logger.warning("New CAPTCHA detected after scraping attempt")
+                    instructions = captcha_handler._generate_user_instructions(captcha_info)
+                    
+                    return jsonify({
+                        'success': False,
+                        'error': 'CAPTCHA_CHALLENGE',
+                        'captcha_detected': True,
+                        'captcha_info': {
+                            'type': captcha_info.captcha_type,
+                            'message': captcha_info.message,
+                            'timeout_seconds': captcha_info.timeout_seconds
+                        },
+                        'instructions': instructions,
+                        'requires_manual_intervention': True
+                    })
+                
+                logger.error(f"LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}")
+                return jsonify({
+                    'success': False,
+                    'error': f'LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}'
+                })
+            
+            # Convert scraped jobs to database format and save
+            db_manager = get_authenticated_db_manager()
+            if not db_manager:
+                return jsonify({'success': False, 'error': 'Database not available'})
+            
+            saved_jobs = []
+            for job_listing in scraping_result.jobs:
+                job_data = {
+                    'user_id': user['user_id'],
+                    'job_title': job_listing.title,
+                    'company_name': job_listing.company,
+                    'location': job_listing.location,
+                    'job_description': job_listing.description,
+                    'linkedin_url': job_listing.linkedin_url,  # Use linkedin_url field
+                    'job_url': '',  # Clear job_url field to avoid confusion
+                    'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
+                    'work_arrangement': job_listing.remote_type,
+                    'experience_level': job_listing.experience_level,
+                    'job_type': job_listing.job_type,
+                    'date_found': datetime.now().isoformat()
+                }
+                
+                success, message, job = db_manager.jobs.create_job(job_data)
+                if success and job:
+                    saved_jobs.append(job)
+                    logger.info(f"Saved job after CAPTCHA: {job_listing.title} at {job_listing.company}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Successfully found and saved {len(saved_jobs)} jobs after CAPTCHA verification',
+                'jobs_count': len(saved_jobs),
+                'captcha_solved': True
+            })
+            
+        finally:
+            # Clean up scraper
+            if scraper:
+                scraper.cleanup()
         
     except Exception as e:
         logger.error(f"CAPTCHA continuation error: {e}")
         return jsonify({'success': False, 'error': f'CAPTCHA continuation failed: {str(e)}'})
+
+
+@app.route('/search/linkedin/captcha/check', methods=['POST'])
+@login_required  
+def check_captcha_status():
+    """Check if CAPTCHA has been solved using the proper CAPTCHA handler."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        # Get LinkedIn credentials
+        from src.config.config_manager import ConfigurationManager
+        config_manager = ConfigurationManager()
+        linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
+        linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
+        
+        if not linkedin_username or not linkedin_password:
+            return jsonify({'success': False, 'error': 'LinkedIn credentials not configured'})
+        
+        # Import required modules
+        from src.utils.captcha_handler import captcha_handler
+        from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+        
+        # Create WebDriver scraper for CAPTCHA checking
+        scraper = None
+        try:
+            scraper = create_enhanced_linkedin_scraper(
+                username=linkedin_username,
+                password=linkedin_password,
+                use_persistent_session=True
+            )
+            
+            # Set up CAPTCHA handler with the scraper's WebDriver
+            if hasattr(scraper, 'driver') and scraper.driver:
+                captcha_handler.set_driver(scraper.driver)
+                
+                # Use the proper CAPTCHA detection method
+                captcha_info = captcha_handler.detect_captcha()
+                
+                if captcha_info.status == CAPTCHAStatus.NOT_DETECTED:
+                    return jsonify({
+                        'success': True,
+                        'captcha_solved': True,
+                        'message': 'CAPTCHA appears to be solved - you can continue with the search'
+                    })
+                elif captcha_info.status == CAPTCHAStatus.DETECTED:
+                    instructions = captcha_handler._generate_user_instructions(captcha_info)
+                    return jsonify({
+                        'success': False,
+                        'captcha_solved': False,
+                        'captcha_detected': True,
+                        'captcha_info': {
+                            'type': captcha_info.captcha_type,
+                            'message': captcha_info.message,
+                            'timeout_seconds': captcha_info.timeout_seconds
+                        },
+                        'instructions': instructions,
+                        'message': 'CAPTCHA still needs to be solved'
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': f'CAPTCHA status check failed: {captcha_info.message}'
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'WebDriver not available for CAPTCHA checking'
+                })
+                
+        finally:
+            # Clean up scraper
+            if scraper:
+                scraper.cleanup()
+        
+    except Exception as e:
+        logger.error(f"CAPTCHA status check error: {e}")
+        return jsonify({'success': False, 'error': f'CAPTCHA status check failed: {str(e)}'})
 
 
 @app.route('/jobs')
@@ -1018,7 +1716,7 @@ def jobs_page():
             job_title = job_dict.get('job_title') or job_dict.get('title')
             company_name = job_dict.get('company_name') or job_dict.get('company')
             location = job_dict.get('location', '')
-            job_url = job_dict.get('job_url') or job_dict.get('url', '#')
+            linkedin_url = job_dict.get('linkedin_url') or job_dict.get('url', '#')
             job_description = job_dict.get('job_description') or job_dict.get('description', '')
             salary_range = job_dict.get('salary_range', '')
             job_type = job_dict.get('job_type', '')
@@ -1038,7 +1736,7 @@ def jobs_page():
                     'job_title': job_title or 'Unknown Title',
                     'company_name': company_name or 'Unknown Company',
                     'location': location,
-                    'job_url': job_url,
+                    'linkedin_url': linkedin_url,
                     'job_description': job_description,
                     'salary_range': salary_range,
                     'job_type': job_type,
@@ -1444,7 +2142,6 @@ def jobs_tracker():
             job_title = job_dict.get('job_title') or job_dict.get('title')
             company_name = job_dict.get('company_name') or job_dict.get('company')
             location = job_dict.get('location', '')
-            job_url = job_dict.get('job_url') or job_dict.get('url', '#')
             job_description = job_dict.get('job_description') or job_dict.get('description', '')
             salary_range = job_dict.get('salary_range', '')
             job_type = job_dict.get('job_type', '')
@@ -1452,10 +2149,49 @@ def jobs_tracker():
             work_arrangement = job_dict.get('work_arrangement', '')
             date_found = job_dict.get('date_found', '')
             
+
+            
             # Get favorite data
             favorite = favorites_lookup.get(job_id)
             is_favorited = favorite is not None
             priority = favorite.get('priority', 'medium') if favorite else 'medium'
+            
+            # Debug: Log the job data to see what fields are available
+            if processed_jobs < 3:  # Only log first 3 jobs to avoid spam
+                logger.info(f"Job {job_id} data keys: {list(job_dict.keys())}")
+                logger.info(f"Job {job_id} linkedin_job_url: {job_dict.get('linkedin_job_url', 'NOT_FOUND')}")
+                logger.info(f"Job {job_id} linkedin_url: {job_dict.get('linkedin_url', 'NOT_FOUND')}")
+                logger.info(f"Job {job_id} job_url: {job_dict.get('job_url', 'NOT_FOUND')}")
+                logger.info(f"Job {job_id} full data: {job_dict}")
+            
+                        # Enhanced LinkedIn URL extraction with better debugging
+            # According to database schema, we have: linkedin_url and job_url fields
+            linkedin_url_raw = job_dict.get('linkedin_url')
+            job_url_raw = job_dict.get('job_url')
+            
+            # Debug: Log all URL-related fields for first few jobs
+            if processed_jobs < 3:
+                print(f"🔍 DEBUG: Job {job_id} - All URL fields:")
+                print(f"  linkedin_url: {linkedin_url_raw}")
+                print(f"  job_url: {job_url_raw}")
+                print(f"  linkedin_job_url: {job_dict.get('linkedin_job_url', 'NOT_FOUND')}")
+                print(f"  url: {job_dict.get('url', 'NOT_FOUND')}")
+            
+            # Priority order: linkedin_url > job_url (only if it's a LinkedIn URL) > linkedin_job_url > url
+            linkedin_url = linkedin_url_raw or ''
+            
+            # If linkedin_url is empty, check if job_url contains a LinkedIn URL
+            if not linkedin_url and job_url_raw and 'linkedin.com' in job_url_raw.lower():
+                linkedin_url = job_url_raw
+            
+            # Fallback to other fields if still empty
+            if not linkedin_url:
+                linkedin_url = (job_dict.get('linkedin_job_url') or 
+                               job_dict.get('url') or '')
+            
+            # Clean up the URL - remove placeholder values
+            if linkedin_url in ['#', 'null', 'None', '']:
+                linkedin_url = ''
             
             # Create enhanced job data in the format your template expects
             job_data_entry = {
@@ -1464,7 +2200,8 @@ def jobs_tracker():
                     'job_title': job_title or 'Unknown Title',
                     'company_name': company_name or 'Unknown Company',
                     'location': location,
-                    'job_url': job_url,
+                    'linkedin_url': linkedin_url,  # Use LinkedIn URL from database
+                    'job_url': job_dict.get('job_url', ''),  # Keep original job_url field
                     'job_description': job_description,
                     'salary_range': salary_range,
                     'job_type': job_type,
@@ -1475,7 +2212,7 @@ def jobs_tracker():
                 'application': application,
                 'is_favorited': is_favorited,
                 'priority': priority,
-                'source': job_dict.get('source', 'unknown'),
+                'source': linkedin_url or 'unknown',  # Use LinkedIn URL as source
                 'notes': favorite.get('notes', '') if favorite else '',
                 'application_count': application_counts.get(job_id, 0),
                 'has_applied': application_counts.get(job_id, 0) > 0
@@ -1499,7 +2236,6 @@ def jobs_tracker():
         today = datetime.now().strftime('%Y-%m-%d')
         page = int(request.args.get('page', 1))
         
-        # Debug: Log what we're passing to the template
         logger.info(f"Passing {len(jobs_data)} jobs to template")
         logger.info(f"Analytics: {analytics}")
         
@@ -1532,7 +2268,9 @@ def get_enhanced_jobs_data(db_manager, user_id, filters):
         # OPTIMIZED: Get all jobs and applications in 2 queries (same as jobs_page)
         try:
             logger.info("Attempting to use new SupabaseManager methods...")
+            logger.info("DEBUG: About to call get_all_jobs")
             jobs_data_raw = db_manager.get_all_jobs(user_id)
+            logger.info("DEBUG: get_all_jobs completed")
             applications_data_raw = db_manager.get_applications_by_user(user_id)
             
             logger.info(f"New methods successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
@@ -1594,6 +2332,26 @@ def get_enhanced_jobs_data(db_manager, user_id, filters):
             is_favorited = favorite is not None
             priority = favorite.get('priority', 'medium') if favorite else 'medium'
             
+            # Enhanced LinkedIn URL extraction (same logic as jobs_tracker)
+            linkedin_url_raw = job_dict.get('linkedin_url')
+            job_url_raw = job_dict.get('job_url')
+            
+            # Priority order: linkedin_url > job_url (only if it's a LinkedIn URL) > linkedin_job_url > url
+            linkedin_url = linkedin_url_raw or ''
+            
+            # If linkedin_url is empty, check if job_url contains a LinkedIn URL
+            if not linkedin_url and job_url_raw and 'linkedin.com' in job_url_raw.lower():
+                linkedin_url = job_url_raw
+            
+            # Fallback to other fields if still empty
+            if not linkedin_url:
+                linkedin_url = (job_dict.get('linkedin_job_url') or 
+                               job_dict.get('url') or '')
+            
+            # Clean up the URL - remove placeholder values
+            if linkedin_url in ['#', 'null', 'None', '']:
+                linkedin_url = ''
+            
             # Create enhanced job data
             enhanced_job = {
                 'job': {
@@ -1601,7 +2359,8 @@ def get_enhanced_jobs_data(db_manager, user_id, filters):
                     'job_title': job_dict.get('job_title') or job_dict.get('title', 'Unknown Title'),
                     'company_name': job_dict.get('company_name') or job_dict.get('company', 'Unknown Company'),
                     'location': job_dict.get('location', ''),
-                    'job_url': job_dict.get('job_url') or job_dict.get('url', '#'),
+                    'linkedin_url': linkedin_url,  # Use enhanced LinkedIn URL
+                    'job_url': job_dict.get('job_url', ''),  # Keep original job_url field
                     'job_description': job_dict.get('job_description') or job_dict.get('description', ''),
                     'salary_range': job_dict.get('salary_range', ''),
                     'job_type': job_dict.get('job_type', ''),
@@ -1612,7 +2371,7 @@ def get_enhanced_jobs_data(db_manager, user_id, filters):
                 'application': application,
                 'is_favorited': is_favorited,
                 'priority': priority,
-                'source': job_dict.get('source', 'unknown'),
+                'source': linkedin_url or job_dict.get('source', 'unknown'),
                 'notes': favorite.get('notes', '') if favorite else ''
             }
             

@@ -133,6 +133,11 @@ class CAPTCHAHandler:
                 if indicator in page_source:
                     detected_indicators.append(f"linkedin_{indicator}")
             
+            # Debug logging
+            if detected_indicators:
+                self.logger.info(f"CAPTCHA indicators found in page source: {detected_indicators}")
+                self.logger.info(f"Current URL: {current_url}")
+            
             # Check for CAPTCHA elements
             captcha_elements = []
             for selector in self.captcha_selectors:
@@ -145,8 +150,69 @@ class CAPTCHAHandler:
                 except Exception:
                     continue
             
+            # Additional check for visual CAPTCHA elements
+            visual_captcha_indicators = [
+                "//iframe[contains(@src, 'recaptcha')]",
+                "//iframe[contains(@src, 'captcha')]",
+                "//div[contains(@class, 'recaptcha')]",
+                "//div[contains(@class, 'captcha')]",
+                "//div[contains(@id, 'recaptcha')]",
+                "//div[contains(@id, 'captcha')]"
+            ]
+            
+            for xpath in visual_captcha_indicators:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, xpath)
+                    for element in elements:
+                        if element.is_displayed():
+                            captcha_elements.append(f"xpath:{xpath}")
+                            break
+                except Exception:
+                    continue
+            
             # Determine CAPTCHA type and status
-            if detected_indicators or captcha_elements:
+            # Require more specific indicators or actual CAPTCHA elements
+            captcha_detected = False
+            
+            # Check if we have actual CAPTCHA elements (iframe, recaptcha, etc.)
+            if captcha_elements:
+                captcha_detected = True
+                self.logger.info(f"CAPTCHA elements found: {captcha_elements}")
+            
+            # Check for specific high-confidence indicators
+            high_confidence_indicators = [
+                "prove you're not a robot",
+                "verify you're human", 
+                "complete the security check",
+                "solve this puzzle",
+                "verify your identity",
+                "security verification",
+                "unusual activity detected",
+                "suspicious activity"
+            ]
+            
+            for indicator in high_confidence_indicators:
+                if indicator in page_source:
+                    captcha_detected = True
+                    self.logger.info(f"High-confidence CAPTCHA indicator found: {indicator}")
+                    break
+            
+            # Check for multiple lower-confidence indicators
+            if len(detected_indicators) >= 2:
+                captcha_detected = True
+                self.logger.info(f"Multiple CAPTCHA indicators found: {detected_indicators}")
+            
+            # Check if we're on a login page - be more lenient with detection
+            is_login_page = "login" in current_url or "signin" in current_url
+            if is_login_page and detected_indicators:
+                self.logger.info(f"On login page with indicators: {detected_indicators}")
+                # On login pages, we need to be more careful about false positives
+                # Only detect if we have high-confidence indicators or actual elements
+                if not captcha_elements and not any(indicator in detected_indicators for indicator in high_confidence_indicators):
+                    self.logger.info("On login page but no high-confidence CAPTCHA indicators - treating as false positive")
+                    captcha_detected = False
+            
+            if captcha_detected:
                 captcha_type = self._determine_captcha_type(detected_indicators, captcha_elements)
                 message = self._generate_captcha_message(captcha_type, detected_indicators)
                 
@@ -237,6 +303,58 @@ class CAPTCHAHandler:
             detection_time=captcha_info.detection_time,
             timeout_seconds=self.timeout_seconds
         )
+    
+    def check_captcha_solved(self, original_captcha_info: CAPTCHAInfo) -> CAPTCHAInfo:
+        """
+        Check if CAPTCHA has been solved without blocking.
+        
+        Args:
+            original_captcha_info: The original CAPTCHA information
+            
+        Returns:
+            Updated CAPTCHAInfo with current status
+        """
+        if not self.driver:
+            return CAPTCHAInfo(
+                status=CAPTCHAStatus.ERROR,
+                captcha_type=original_captcha_info.captcha_type,
+                message="WebDriver not available for CAPTCHA checking",
+                detection_time=original_captcha_info.detection_time,
+                timeout_seconds=self.timeout_seconds
+            )
+        
+        # Check current CAPTCHA status
+        current_captcha = self.detect_captcha()
+        
+        if current_captcha.status == CAPTCHAStatus.NOT_DETECTED:
+            # CAPTCHA appears to be solved
+            self.logger.info("CAPTCHA appears to be solved")
+            return CAPTCHAInfo(
+                status=CAPTCHAStatus.SOLVED,
+                captcha_type=original_captcha_info.captcha_type,
+                message="CAPTCHA successfully solved",
+                detection_time=original_captcha_info.detection_time,
+                timeout_seconds=self.timeout_seconds
+            )
+        
+        # Check if page has changed significantly (indicating successful navigation)
+        try:
+            current_url = self.driver.current_url
+            if "login" not in current_url.lower() and "captcha" not in current_url.lower():
+                # Page has navigated away from CAPTCHA
+                self.logger.info("Page navigated away from CAPTCHA - assuming solved")
+                return CAPTCHAInfo(
+                    status=CAPTCHAStatus.SOLVED,
+                    captcha_type=original_captcha_info.captcha_type,
+                    message="CAPTCHA appears solved (page navigation detected)",
+                    detection_time=original_captcha_info.detection_time,
+                    timeout_seconds=self.timeout_seconds
+                )
+        except Exception:
+            pass
+        
+        # CAPTCHA is still detected
+        return current_captcha
     
     def handle_captcha_with_user_notification(self, captcha_info: CAPTCHAInfo) -> Dict[str, Any]:
         """

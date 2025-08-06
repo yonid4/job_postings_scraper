@@ -123,7 +123,7 @@ class JobTracker:
                         title TEXT NOT NULL,
                         company TEXT NOT NULL,
                         location TEXT,
-                        job_url TEXT NOT NULL,
+                        linkedin_url TEXT NOT NULL,
                         job_site TEXT NOT NULL,
                         description TEXT,
                         requirements TEXT,
@@ -453,7 +453,7 @@ class JobTracker:
                 
                 cursor.execute('''
                     INSERT OR REPLACE INTO job_listings (
-                        id, title, company, location, job_url, job_site,
+                        id, title, company, location, linkedin_url, job_site,
                         description, requirements, responsibilities, benefits,
                         salary_min, salary_max, salary_currency, job_type,
                         experience_level, remote_type, application_url,
@@ -462,7 +462,7 @@ class JobTracker:
                         duplicate_of, notes
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    job.id, job.title, job.company, job.location, job.job_url,
+                    job.id, job.title, job.company, job.location, job.linkedin_url,
                     job.job_site, job.description, json.dumps(job.requirements),
                     json.dumps(job.responsibilities), json.dumps(job.benefits),
                     job.salary_min, job.salary_max, job.salary_currency,
@@ -663,7 +663,7 @@ class JobTracker:
         
         return JobListing(
             id=row[0], title=row[1], company=row[2], location=row[3],
-            job_url=row[4], job_site=row[5], description=row[6],
+            linkedin_url=row[4], job_site=row[5], description=row[6],
             requirements=json.loads(row[7]) if row[7] else [],
             responsibilities=json.loads(row[8]) if row[8] else [],
             benefits=json.loads(row[9]) if row[9] else [],

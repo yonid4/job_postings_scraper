@@ -36,7 +36,7 @@ def test_duplicate_detection():
         test_job = QualificationResult(
             job_title="Software Engineer",
             company="Test Company",
-            job_url="https://www.linkedin.com/jobs/view/1234567890",
+            linkedin_url="https://www.linkedin.com/jobs/view/1234567890",
             qualification_score=85,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Great match for the position",
@@ -72,7 +72,7 @@ def test_duplicate_detection():
         different_job = QualificationResult(
             job_title="Data Scientist",
             company="Different Company",
-            job_url="https://www.linkedin.com/jobs/view/9876543210",
+            linkedin_url="https://www.linkedin.com/jobs/view/9876543210",
             qualification_score=90,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Excellent match",
@@ -103,7 +103,7 @@ def test_duplicate_detection():
         same_job_different_format = QualificationResult(
             job_title="Software Engineer",
             company="Test Company",
-            job_url="https://www.linkedin.com/jobs/view/1234567890?refId=abc123&trackingId=xyz789",
+            linkedin_url="https://www.linkedin.com/jobs/view/1234567890?refId=abc123&trackingId=xyz789",
             qualification_score=85,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Great match for the position",

@@ -416,33 +416,33 @@ class JobLinkProcessor:
                     description = all_text[:500]  # Limit to 500 characters
             
             # Construct job URL - try multiple approaches
-            job_url = None
+            linkedin_url = None
             
             # Method 1: Use job ID to construct URL
             if job_id:
-                job_url = f"https://www.linkedin.com/jobs/view/{job_id}"
+                linkedin_url = f"https://www.linkedin.com/jobs/view/{job_id}"
             
             # Method 2: Look for direct job links in the card
-            if not job_url:
+            if not linkedin_url:
                 links = card.find_all('a', href=True)
                 for link in links:
                     href = link.get('href', '')
                     if '/jobs/view/' in href:
                         # Make sure it's a complete URL
                         if href.startswith('http'):
-                            job_url = href
+                            linkedin_url = href
                         elif href.startswith('/'):
-                            job_url = f"https://www.linkedin.com{href}"
+                            linkedin_url = f"https://www.linkedin.com{href}"
                         else:
-                            job_url = f"https://www.linkedin.com/{href}"
+                            linkedin_url = f"https://www.linkedin.com/{href}"
                         break
             
             # Method 3: Fallback to base URL if no job-specific URL found
-            if not job_url:
-                job_url = base_url
+            if not linkedin_url:
+                linkedin_url = base_url
             
             # Debug logging
-            logger.debug(f"Extracted job URL: {job_url} (job_id: {job_id}, title: {title})")
+            logger.debug(f"Extracted job URL: {linkedin_url} (job_id: {job_id}, title: {title})")
             
             # Validation: Ensure title and company are not the same
             if title and company and title.lower() == company.lower():
@@ -461,7 +461,7 @@ class JobLinkProcessor:
                 return None
             
             return JobLinkInfo(
-                url=job_url,
+                url=linkedin_url,
                 job_site='linkedin',
                 job_id=job_id,
                 title=title,
@@ -720,7 +720,7 @@ class JobLinkProcessor:
                 title=job_link.title or "Unknown Title",
                 company=job_link.company or "Unknown Company",
                 location=job_link.location or "Unknown Location",
-                job_url=job_link.url,
+                linkedin_url=job_link.url,
                 job_site=job_link.job_site,
                 description=job_link.description or "",
                 notes=f"Extracted from user-provided link"

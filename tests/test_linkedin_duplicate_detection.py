@@ -46,7 +46,7 @@ def test_linkedin_url_duplicate_detection():
         job1 = QualificationResult(
             job_title="Frontend Developer",
             company="WebTech Inc",
-            job_url=f"https://www.linkedin.com/jobs/view/{job1_id}",
+            linkedin_url=f"https://www.linkedin.com/jobs/view/{job1_id}",
             qualification_score=85,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Great match for the position",
@@ -62,7 +62,7 @@ def test_linkedin_url_duplicate_detection():
         print(f"   Using unique job IDs: {job1_id}, {job2_id}, {job3_id}, {job4_id}")
         
         # First, check if this job already exists
-        is_duplicate1 = sheets_manager.is_job_duplicate(job1.job_title, job1.company, job1.job_url)
+        is_duplicate1 = sheets_manager.is_job_duplicate(job1.job_title, job1.company, job1.linkedin_url)
         print(f"   Job '{job1.job_title}' at '{job1.company}' is duplicate: {is_duplicate1}")
         
         # Try to write the job
@@ -83,7 +83,7 @@ def test_linkedin_url_duplicate_detection():
         job3 = QualificationResult(
             job_title="Backend Developer",
             company="ServerCorp",
-            job_url=f"https://www.linkedin.com/jobs/view/{job3_id}",
+            linkedin_url=f"https://www.linkedin.com/jobs/view/{job3_id}",
             qualification_score=90,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Excellent match",
@@ -96,7 +96,7 @@ def test_linkedin_url_duplicate_detection():
         )
         
         print("\n🧪 Testing different job with different LinkedIn URL...")
-        is_duplicate3 = sheets_manager.is_job_duplicate(job3.job_title, job3.company, job3.job_url)
+        is_duplicate3 = sheets_manager.is_job_duplicate(job3.job_title, job3.company, job3.linkedin_url)
         print(f"   Job '{job3.job_title}' at '{job3.company}' is duplicate: {is_duplicate3}")
         
         success3 = sheets_manager.write_qualification_result(job3)
@@ -109,7 +109,7 @@ def test_linkedin_url_duplicate_detection():
         job2 = QualificationResult(
             job_title="Frontend Developer",
             company="WebTech Inc",
-            job_url=f"https://www.linkedin.com/jobs/view/{job1_id}?refId=abc123&trackingId=xyz789",
+            linkedin_url=f"https://www.linkedin.com/jobs/view/{job1_id}?refId=abc123&trackingId=xyz789",
             qualification_score=85,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Great match for the position",
@@ -124,7 +124,7 @@ def test_linkedin_url_duplicate_detection():
         is_duplicate_normalized = sheets_manager.is_job_duplicate(
             job2.job_title, 
             job2.company, 
-            job2.job_url
+            job2.linkedin_url
         )
         print(f"   Same job with different URL format is duplicate: {is_duplicate_normalized}")
         
@@ -142,7 +142,7 @@ def test_linkedin_url_duplicate_detection():
         job4 = QualificationResult(
             job_title="Frontend Developer",
             company="WebTech Inc",
-            job_url=f"https://www.linkedin.com/jobs/view/{job4_id}",
+            linkedin_url=f"https://www.linkedin.com/jobs/view/{job4_id}",
             qualification_score=80,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Good match",
@@ -154,8 +154,8 @@ def test_linkedin_url_duplicate_detection():
             user_decision=UserDecision.APPROVED
         )
         
-        print(f"\n4️⃣ Testing same title/company but different URL: {job4.job_url}")
-        is_duplicate4 = sheets_manager.is_job_duplicate(job4.job_title, job4.company, job4.job_url)
+        print(f"\n4️⃣ Testing same title/company but different URL: {job4.linkedin_url}")
+        is_duplicate4 = sheets_manager.is_job_duplicate(job4.job_title, job4.company, job4.linkedin_url)
         print(f"   Is duplicate: {is_duplicate4}")
         
         success4 = sheets_manager.write_qualification_result(job4)

@@ -330,7 +330,7 @@ class LinkedInAPIScraper(BaseScraper):
             ])
             
             # Extract job URL
-            job_url = self._extract_job_url(job_element, base_url)
+            linkedin_url = self._extract_job_url(job_element, base_url)
             
             # Extract job description (preview)
             description = self._extract_text(job_element, [
@@ -354,7 +354,7 @@ class LinkedInAPIScraper(BaseScraper):
                 company=company or "Unknown Company",
                 location=location or "Unknown Location",
                 description=description or "No description available",
-                job_url=job_url,
+                linkedin_url=linkedin_url,
                 posted_date=posted_date,
                 job_type=job_type,
                 experience_level=experience_level,

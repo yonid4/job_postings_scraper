@@ -51,7 +51,7 @@ class TestQualificationAnalyzerRetryLogic:
             'id': 'test-job-123',
             'title': 'Software Engineer',
             'company': 'Test Company',
-            'job_url': 'https://example.com/job/123',
+            'linkedin_url': 'https://example.com/job/123',
             'description': 'We are looking for a Python developer with 3+ years of experience.'
         }
     

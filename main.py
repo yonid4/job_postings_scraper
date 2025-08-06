@@ -160,7 +160,7 @@ class JobQualificationSystem:
             title="Software Engineer",
             company="Tech Corp",
             location="San Francisco, CA",
-            job_url="https://example.com/job/123",
+            linkedin_url="https://example.com/job/123",
             job_site="linkedin",
             description="We are looking for a talented software engineer...",
             salary_min=80000,
@@ -174,7 +174,7 @@ class JobQualificationSystem:
             job_id=job.id,
             job_title=job.title,
             company=job.company,
-            job_url=job.job_url,
+            linkedin_url=job.linkedin_url,
             qualification_score=85,
             qualification_status=QualificationStatus.QUALIFIED,
             ai_reasoning="Strong match for experience and skills",
@@ -315,7 +315,7 @@ class JobQualificationSystem:
                 job_id="demo-job-001",
                 job_title=sample_job['title'],
                 company=sample_job['company'],
-                job_url="https://example.com/job/demo",
+                linkedin_url="https://example.com/job/demo",
                 analysis_response=result
             )
             
@@ -482,7 +482,7 @@ class JobQualificationSystem:
                 'id': job.id,
                 'title': job.title,
                 'company': job.company,
-                'job_url': job.job_url,
+                'linkedin_url': job.linkedin_url,
                 'description': job.description
             })
         

@@ -62,8 +62,7 @@ class Job:
     location: str
     salary_range: Optional[str] = None
     job_description: Optional[str] = None
-    job_url: Optional[str] = None
-    linkedin_job_url: Optional[str] = None  
+    linkedin_url: Optional[str] = None
     date_posted: Optional[datetime] = None
     date_found: Optional[datetime] = None
     work_arrangement: Optional[str] = None
@@ -193,11 +192,36 @@ class SupabaseManager:
     def get_all_jobs(self, user_id):
         """Get all jobs for a user ordered by date_found desc"""
         try:
+            logger.info(f"DEBUG: get_all_jobs called for user {user_id}")
             response = self.client.table('jobs').select('*').eq(
                 'user_id', user_id
             ).order('date_found', desc=True).execute()
             
-            return response.data if response.data else []
+            data = response.data if response.data else []
+            logger.info(f"DEBUG: get_all_jobs returned {len(data)} jobs")
+            
+            # Enhanced debugging: Check what columns are actually returned
+            if data:
+                logger.info(f"DEBUG: First job from database has keys: {list(data[0].keys())}")
+                logger.info(f"DEBUG: First job linkedin_url: {data[0].get('linkedin_url', 'NOT_FOUND')}")
+                logger.info(f"DEBUG: First job job_url: {data[0].get('job_url', 'NOT_FOUND')}")
+                logger.info(f"DEBUG: First job linkedin_job_url: {data[0].get('linkedin_job_url', 'NOT_FOUND')}")
+                logger.info(f"DEBUG: First job url: {data[0].get('url', 'NOT_FOUND')}")
+                
+                # Check for specific job ID
+                for job in data:
+                    if job.get('job_id') == '79a162d8-842a-4a81-830d-6b88d207df7b':
+                        logger.info(f"DEBUG: Found specific job in database:")
+                        logger.info(f"DEBUG: Job ID: {job.get('job_id')}")
+                        logger.info(f"DEBUG: All keys: {list(job.keys())}")
+                        logger.info(f"DEBUG: linkedin_url: {job.get('linkedin_url', 'NOT_FOUND')}")
+                        logger.info(f"DEBUG: job_url: {job.get('job_url', 'NOT_FOUND')}")
+                        logger.info(f"DEBUG: linkedin_job_url: {job.get('linkedin_job_url', 'NOT_FOUND')}")
+                        logger.info(f"DEBUG: url: {job.get('url', 'NOT_FOUND')}")
+                        logger.info(f"DEBUG: Full job data: {job}")
+                        break
+            
+            return data
         except Exception as e:
             logger.error(f"Error getting jobs for user {user_id}: {str(e)}")
             return []
@@ -391,7 +415,7 @@ class JobManager:
                 job_data['date_found'] = datetime.utcnow().isoformat()
             
             # Check for duplicates
-            if self.is_job_duplicate(job_data['user_id'], job_data.get('job_url')):
+            if self.is_job_duplicate(job_data['user_id'], job_data.get('linkedin_url')):
                 return False, "Job already exists", None
             
             # Insert job
@@ -544,22 +568,22 @@ class JobManager:
             logger.error(f"Error deleting job: {e}")
             return False, f"Failed to delete job: {str(e)}"
     
-    def is_job_duplicate(self, user_id: str, job_url: Optional[str] = None) -> bool:
+    def is_job_duplicate(self, user_id: str, linkedin_url: Optional[str] = None) -> bool:
         """
         Check if job is a duplicate for the user.
         
         Args:
             user_id: User ID
-            job_url: Job URL
+            linkedin_url: Job URL
             
         Returns:
             True if duplicate exists, False otherwise
         """
         try:
-            if not job_url:
+            if not linkedin_url:
                 return False
             
-            query = self.client.table(self.table_name).select("job_id").eq("user_id", user_id).eq("job_url", job_url)
+            query = self.client.table(self.table_name).select("job_id").eq("user_id", user_id).eq("linkedin_url", linkedin_url)
             response = query.execute()
             return len(response.data) > 0
             

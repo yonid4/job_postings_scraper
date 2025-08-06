@@ -14,7 +14,7 @@ class EmergencyJobData:
     company_name: str
     location: Optional[str]
     salary_range: Optional[str]
-    job_url: str
+    linkedin_url: str
     application_status: Optional[str]
     applied_date: Optional[datetime]
     created_at: datetime
@@ -44,7 +44,7 @@ class EmergencyJobQueries:
                 j.company_name,
                 j.location,
                 j.salary_range,
-                j.job_url,
+                j.linkedin_url,
                 j.created_at,
                 a.application_status,
                 a.applied_date
@@ -70,7 +70,7 @@ class EmergencyJobQueries:
                     company_name=row['company_name'],
                     location=row['location'],
                     salary_range=row['salary_range'],
-                    job_url=row['job_url'],
+                    linkedin_url=row['linkedin_url'],
                     application_status=row['application_status'],
                     applied_date=row['applied_date'],
                     created_at=row['created_at']

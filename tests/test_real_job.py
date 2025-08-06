@@ -32,14 +32,14 @@ def test_with_proper_urls():
         print(f"   ❌ {url}")
     
     print("\n✅ INDIVIDUAL JOB URLS (These extract ONE job):")
-    individual_job_urls = [
+    individual_linkedin_urls = [
         "https://www.linkedin.com/jobs/view/4110605130",
         "https://www.linkedin.com/jobs/view/software-engineer-at-google-123456",
         "https://www.indeed.com/viewjob?jk=abc123def456",
         "https://www.glassdoor.com/Job/software-engineer-jobs-SRCH_IL.0,17_KO18,31.htm"
     ]
     
-    for url in individual_job_urls:
+    for url in individual_linkedin_urls:
         print(f"   ✅ {url}")
     
     print("\n💡 HOW TO GET PROPER JOB URLS:")
@@ -60,7 +60,7 @@ def test_with_proper_urls():
     print("The system can now extract multiple jobs from search pages!")
     print("Just provide a LinkedIn search URL and it will extract all visible jobs.")
     
-    return individual_job_urls
+    return individual_linkedin_urls
 
 
 def test_search_page_extraction():
@@ -199,19 +199,19 @@ def test_single_job_analysis():
     print("5. Paste it here")
     print()
     
-    job_url = input("Enter a specific job URL (or press Enter to skip): ").strip()
+    linkedin_url = input("Enter a specific job URL (or press Enter to skip): ").strip()
     
-    if not job_url:
+    if not linkedin_url:
         print("⏭️  Skipping job analysis test")
         return
     
     # Validate the URL
-    if "jobs/search" in job_url or "jobs?q=" in job_url:
+    if "jobs/search" in linkedin_url or "jobs?q=" in linkedin_url:
         print("❌ This is a search URL, not a specific job URL!")
         print("Please get the URL from a specific job posting page.")
         return
     
-    print(f"\n📋 Testing with: {job_url}")
+    print(f"\n📋 Testing with: {linkedin_url}")
     
     runner = JobAnalysisRunner()
     
@@ -221,7 +221,7 @@ def test_single_job_analysis():
     
     # Test the analysis
     print(f"\n📋 Analyzing job...")
-    result = runner.analyze_single_job(job_url, save_to_sheets=False)
+    result = runner.analyze_single_job(linkedin_url, save_to_sheets=False)
     
     if result:
         print(f"\n✅ Analysis successful!")

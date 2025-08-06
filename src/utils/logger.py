@@ -135,7 +135,7 @@ class JobAutomationLogger:
         self,
         job_title: str,
         company: str,
-        job_url: str,
+        linkedin_url: str,
         status: str,
         error_message: Optional[str] = None
     ) -> None:
@@ -145,21 +145,21 @@ class JobAutomationLogger:
         Args:
             job_title: Title of the job applied to
             company: Company name
-            job_url: URL of the job posting
+            linkedin_url: URL of the job posting
             status: Application status (success, failed, skipped)
             error_message: Error message if application failed
         """
         if status == "success":
             self.logger.info(
-                f"Application successful - {job_title} at {company} ({job_url})"
+                f"Application successful - {job_title} at {company} ({linkedin_url})"
             )
         elif status == "failed":
             self.logger.error(
-                f"Application failed - {job_title} at {company} ({job_url}): {error_message}"
+                f"Application failed - {job_title} at {company} ({linkedin_url}): {error_message}"
             )
         elif status == "skipped":
             self.logger.warning(
-                f"Application skipped - {job_title} at {company} ({job_url}): {error_message}"
+                f"Application skipped - {job_title} at {company} ({linkedin_url}): {error_message}"
             )
     
     def log_scraping_error(self, job_site: str, error: Exception, url: str) -> None:

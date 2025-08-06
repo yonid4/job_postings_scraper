@@ -304,7 +304,7 @@ class QualificationAnalyzer:
                     job_id=job_id,
                     job_title=job.get('title', ''),
                     company=job.get('company', ''),
-                    job_url=job.get('job_url', ''),
+                    linkedin_url=job.get('linkedin_url', ''),
                     analysis_response=analysis_response
                 )
                 
@@ -516,7 +516,7 @@ class QualificationAnalyzer:
         job_id: str,
         job_title: str,
         company: str,
-        job_url: str,
+        linkedin_url: str,
         analysis_response: AnalysisResponse
     ) -> QualificationResult:
         """
@@ -526,7 +526,7 @@ class QualificationAnalyzer:
             job_id: The job ID
             job_title: The job title
             company: The company name
-            job_url: The job URL
+            linkedin_url: The job URL
             analysis_response: The AI analysis response
             
         Returns:
@@ -536,7 +536,7 @@ class QualificationAnalyzer:
             job_id=job_id,
             job_title=job_title,
             company=company,
-            job_url=job_url,
+            linkedin_url=linkedin_url,
             qualification_score=analysis_response.qualification_score,
             qualification_status=analysis_response.qualification_status,
             ai_reasoning=analysis_response.ai_reasoning,
