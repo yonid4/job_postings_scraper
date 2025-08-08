@@ -62,6 +62,125 @@ from src.debug.performance_profiler import emergency_profiler
 from src.data.emergency_queries import EmergencyJobQueries
 from flask_caching import Cache
 
+def create_enhanced_analysis_request(evaluation_job_data, user_profile_data, ai_settings, resume_data=None):
+    """
+    Create an enhanced AnalysisRequest with complete user profile data.
+    
+    Args:
+        evaluation_job_data: Job data dictionary
+        user_profile_data: User profile data from database  
+        ai_settings: AI configuration
+        resume_data: Optional resume data
+        
+    Returns:
+        AnalysisRequest with enhanced profile fields
+    """
+    from src.ai.qualification_analyzer import AnalysisRequest
+    from src.config.config_manager import UserProfile
+    
+    # Create UserProfile object for backward compatibility
+    user_profile = UserProfile(
+        years_of_experience=user_profile_data.years_of_experience or 0,
+        experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else 'entry',
+        additional_skills=user_profile_data.skills_technologies or [],
+        preferred_locations=user_profile_data.preferred_locations or [],
+        salary_min=user_profile_data.salary_min,
+        salary_max=user_profile_data.salary_max,
+        remote_preference=user_profile_data.work_arrangement_preference.value if user_profile_data.work_arrangement_preference else 'any',
+        has_college_degree=user_profile_data.education_level and user_profile_data.education_level.value in ['bachelors', 'masters', 'phd'],
+        field_of_study=user_profile_data.field_of_study,
+        education_details=user_profile_data.education_level.value if user_profile_data.education_level else 'bachelors'
+    )
+    
+    return AnalysisRequest(
+        job_title=evaluation_job_data.get('title', ''),
+        company=evaluation_job_data.get('company', ''),
+        job_description=evaluation_job_data.get('description', ''),
+        ai_settings=ai_settings,
+        user_profile=user_profile,
+        resume_data=resume_data,
+        resume_text=resume_data.get('resume_text') if resume_data else None,
+        years_experience=user_profile_data.years_of_experience,
+        experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else None,
+        skills=user_profile_data.skills_technologies or [],
+        education_level=user_profile_data.education_level.value if user_profile_data.education_level else None,
+        field_of_study=user_profile_data.field_of_study,
+        education_details=user_profile_data.education_level.value if user_profile_data.education_level else None,
+        work_arrangement=user_profile_data.work_arrangement_preference.value if user_profile_data.work_arrangement_preference else None,
+        preferred_locations=user_profile_data.preferred_locations or [],
+        salary_min=user_profile_data.salary_min,
+        salary_max=user_profile_data.salary_max
+    )
+
+def perform_enhanced_job_evaluation(qualification_analyzer, evaluation_job_data, user_profile_data, ai_settings, resume_data=None, max_retries=2):
+    """
+    Perform enhanced job evaluation using the new weighted scoring system.
+    
+    Args:
+        qualification_analyzer: The QualificationAnalyzer instance
+        evaluation_job_data: Job data dictionary
+        user_profile_data: User profile data from database
+        ai_settings: AI configuration
+        resume_data: Optional resume data
+        max_retries: Maximum retry attempts
+        
+    Returns:
+        JobEvaluationResult with enhanced scoring
+    """
+    from src.ai.qualification_analyzer import JobEvaluationResult, DailyQuotaExhaustedException
+    
+    try:
+        # Create enhanced analysis request
+        analysis_request = create_enhanced_analysis_request(
+            evaluation_job_data, user_profile_data, ai_settings, resume_data
+        )
+        
+        # Perform enhanced analysis
+        analysis_response = qualification_analyzer.analyze_job_qualification_with_retry(
+            analysis_request, max_retries=max_retries
+        )
+        
+        # Create qualification result
+        qualification_result = qualification_analyzer.create_qualification_result(
+            job_id=evaluation_job_data.get('id', ''),
+            job_title=evaluation_job_data.get('title', ''),
+            company=evaluation_job_data.get('company', ''),
+            linkedin_url=evaluation_job_data.get('linkedin_url', ''),
+            analysis_response=analysis_response
+        )
+        
+        return JobEvaluationResult(
+            success=True,
+            qualification_result=qualification_result,
+            attempts=1,
+            job_id=evaluation_job_data.get('id', ''),
+            job_title=evaluation_job_data.get('title', '')
+        )
+    
+    except DailyQuotaExhaustedException as e:
+        # Handle daily quota exhaustion specially
+        logger.error(f"🛑 Daily quota exhausted: {e}")
+        error_msg = "Daily AI analysis limit reached (200 requests for free tier). Please wait until tomorrow or upgrade your Gemini API plan."
+        return JobEvaluationResult(
+            success=False,
+            qualification_result=None,
+            attempts=1,  # Don't count retries for quota exhaustion
+            error_message=error_msg,
+            job_id=evaluation_job_data.get('id', ''),
+            job_title=evaluation_job_data.get('title', '')
+        )
+        
+    except Exception as e:
+        logger.error(f"Enhanced job evaluation failed: {e}")
+        return JobEvaluationResult(
+            success=False,
+            qualification_result=None,
+            attempts=max_retries + 1,
+            error_message=str(e),
+            job_id=evaluation_job_data.get('id', ''),
+            job_title=evaluation_job_data.get('title', '')
+        )
+
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-change-this')
@@ -962,19 +1081,25 @@ def search_linkedin_jobs():
                 return jsonify({'success': False, 'error': f'Failed to create user profile: {message}'})
             logger.info(f"Created basic user profile for user {user['user_id']}")
         
-        # Check and process resume if available
+        # Check and process resume if available - this is critical for job evaluation
+        resume_data = None
         if resume_manager:
             try:
                 resume_status = resume_manager.get_resume_status(user['user_id'])
                 if resume_status['has_resume'] and not resume_status['is_processed']:
-                    logger.info(f"Processing resume for user {user['user_id']}")
+                    logger.info(f"Processing resume for user {user['user_id']} before job evaluation")
                     processed_resume = resume_manager.ensure_resume_processed(user['user_id'])
                     if processed_resume:
                         logger.info(f"Resume processed successfully for user {user['user_id']}")
+                        resume_data = processed_resume
                     else:
                         logger.warning(f"Failed to process resume for user {user['user_id']}")
                 elif resume_status['has_resume'] and resume_status['is_processed']:
                     logger.info(f"Resume already processed for user {user['user_id']}")
+                    # Get the processed resume data for job evaluation
+                    resume_data = resume_manager.get_latest_user_resume(user['user_id'])
+                    if resume_data and resume_data.processed_data:
+                        resume_data = resume_data.processed_data
                 else:
                     logger.info(f"No resume found for user {user['user_id']}")
             except Exception as e:
@@ -1304,8 +1429,35 @@ def search_linkedin_jobs():
                     'strategy_info': strategy_info
                 })
             
-            # Convert scraped jobs to database format
+            # Convert scraped jobs to database format and evaluate them
             saved_jobs = []
+            evaluated_jobs = []
+            
+            # Get user profile for evaluation
+            user_profile_data = db_manager.profiles.get_profile(user['user_id'])
+            if not user_profile_data:
+                logger.warning(f"No user profile found for user {user['user_id']}, skipping job evaluation")
+                user_profile = None
+            else:
+                # Create UserProfile object for evaluation
+                from src.config.config_manager import UserProfile, AISettings
+                user_profile = UserProfile(
+                    years_of_experience=user_profile_data.years_of_experience or 0,
+                    experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else 'entry',
+                    additional_skills=user_profile_data.skills_technologies or [],
+                    preferred_locations=user_profile_data.preferred_locations or [],
+                    salary_min=user_profile_data.salary_min,
+                    salary_max=user_profile_data.salary_max,
+                    remote_preference=user_profile_data.work_arrangement_preference.value if user_profile_data.work_arrangement_preference else 'any',
+                    has_college_degree=user_profile_data.education_level and user_profile_data.education_level.value in ['bachelors', 'masters', 'phd'],
+                    field_of_study=user_profile_data.field_of_study,
+                    education_details=user_profile_data.education_level.value if user_profile_data.education_level else 'bachelors'
+                )
+                
+                # Get AI settings
+                ai_settings = config_manager.get_ai_settings()
+            
+            # Process each scraped job
             for job_listing in scraping_result.jobs:
                 job_data = {
                     'user_id': user['user_id'],
@@ -1314,18 +1466,80 @@ def search_linkedin_jobs():
                     'location': job_listing.location,
                     'job_description': job_listing.description,
                     'linkedin_url': job_listing.linkedin_url,  # Use linkedin_url field
-                    'job_url': '',  # Clear job_url field to avoid confusion
+                    'job_url': job_listing.application_url,  # Save application URL as job_url
                     'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
-                    'work_arrangement': job_listing.remote_type,
+                    'work_arrangement': job_listing.work_arrangement,  # Use new work_arrangement field
                     'experience_level': job_listing.experience_level,
                     'job_type': job_listing.job_type,
                     'date_found': datetime.now().isoformat()
                 }
                 
+                # Save job to database
                 success, message, job = db_manager.jobs.create_job(job_data)
                 if success and job:
                     saved_jobs.append(job)
                     logger.info(f"Saved job: {job_listing.title} at {job_listing.company}")
+                    
+                    # Evaluate job if user profile is available
+                    if user_profile and ai_settings:
+                        try:
+                            # Initialize qualification analyzer if not already done
+                            if not hasattr(app, 'qualification_analyzer'):
+                                from src.ai.qualification_analyzer import QualificationAnalyzer
+                                app.qualification_analyzer = QualificationAnalyzer(ai_settings)
+                            
+                            # Check if quota is available before attempting evaluation
+                            quota_available, quota_message = app.qualification_analyzer.is_quota_available()
+                            if not quota_available:
+                                logger.warning(f"🛑 Stopping job evaluations: {quota_message}")
+                                # Add message to response that evaluations were stopped
+                                if 'quota_warning' not in session:
+                                    session['quota_warning'] = quota_message
+                                break  # Stop processing more jobs
+                            
+                            # Prepare job data for evaluation
+                            evaluation_job_data = {
+                                'id': job.job_id,
+                                'title': job.job_title,
+                                'company': job.company_name,
+                                'description': job.job_description or '',
+                                'linkedin_url': job.linkedin_url or ''
+                            }
+                            
+                            # Evaluate job with enhanced weighted scoring
+                            evaluation_result = perform_enhanced_job_evaluation(
+                                app.qualification_analyzer, evaluation_job_data, user_profile_data, ai_settings, resume_data, max_retries=2
+                            )
+                            
+                            if evaluation_result.success and evaluation_result.qualification_result:
+                                # Save qualification result to existing jobs table fields
+                                qual_result = evaluation_result.qualification_result
+                                
+                                # Update job with evaluation results
+                                job_updates = {
+                                    'gemini_evaluation': qual_result.ai_reasoning,
+                                    'gemini_score': qual_result.qualification_score
+                                }
+                                
+                                success, message, updated_job = db_manager.jobs.update_job(job.job_id, user['user_id'], job_updates)
+                                if success:
+                                    evaluated_jobs.append({
+                                        'job_id': job.job_id,
+                                        'job_title': job.job_title,
+                                        'company': job.company_name,
+                                        'qualification_score': qual_result.qualification_score,
+                                        'qualification_status': qual_result.qualification_status.value
+                                    })
+                                    logger.info(f"✅ Evaluated job: {job.job_title} - Score: {qual_result.qualification_score}")
+                                else:
+                                    logger.warning(f"Failed to save evaluation to job: {message}")
+                            else:
+                                logger.warning(f"Job evaluation failed for {job.job_title}: {evaluation_result.error_message}")
+                                
+                        except Exception as eval_error:
+                            logger.error(f"Error evaluating job {job.job_title}: {eval_error}")
+                    else:
+                        logger.info(f"Skipping evaluation for job {job.job_title} - no user profile or AI settings")
                 else:
                     logger.warning(f"Failed to save job: {message}")
             
@@ -1336,14 +1550,35 @@ def search_linkedin_jobs():
             if scraper:
                 scraper.cleanup()
             
-            return jsonify({
+            # Prepare response
+            response_data = {
                 'success': True,
                 'message': f'Found and saved {len(saved_jobs)} jobs from LinkedIn',
                 'jobs_count': len(saved_jobs),
                 'search_id': search_record.search_id,
                 'scraping_metadata': scraping_result.metadata,
                 'strategy_info': strategy_info
-            })
+            }
+            
+            # Add evaluation results if available
+            if evaluated_jobs:
+                response_data['evaluated_jobs_count'] = len(evaluated_jobs)
+                response_data['evaluation_summary'] = {
+                    'total_evaluated': len(evaluated_jobs),
+                    'highly_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'highly_qualified']),
+                    'qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'qualified']),
+                    'somewhat_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'somewhat_qualified']),
+                    'not_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'not_qualified'])
+                }
+                response_data['message'] += f' and evaluated {len(evaluated_jobs)} jobs'
+            
+            # Add quota warning if present
+            if 'quota_warning' in session:
+                response_data['quota_warning'] = session.pop('quota_warning')
+                if len(evaluated_jobs) < len(saved_jobs):
+                    response_data['message'] += f'. AI evaluation stopped due to quota limits.'
+            
+            return jsonify(response_data)
             
         except Exception as e:
             logger.error(f"Error during LinkedIn scraping: {e}")
@@ -1502,12 +1737,63 @@ def continue_after_captcha():
                     'error': f'LinkedIn scraping failed after CAPTCHA: {scraping_result.error_message}'
                 })
             
-            # Convert scraped jobs to database format and save
+            # Convert scraped jobs to database format and evaluate them
             db_manager = get_authenticated_db_manager()
             if not db_manager:
                 return jsonify({'success': False, 'error': 'Database not available'})
             
             saved_jobs = []
+            evaluated_jobs = []
+            
+            # Get user profile for evaluation
+            user_profile_data = db_manager.profiles.get_profile(user['user_id'])
+            if not user_profile_data:
+                logger.warning(f"No user profile found for user {user['user_id']}, skipping job evaluation")
+                user_profile = None
+            else:
+                # Create UserProfile object for evaluation
+                from src.config.config_manager import UserProfile, AISettings
+                user_profile = UserProfile(
+                    years_of_experience=user_profile_data.years_of_experience or 0,
+                    experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else 'entry',
+                    additional_skills=user_profile_data.skills_technologies or [],
+                    preferred_locations=user_profile_data.preferred_locations or [],
+                    salary_min=user_profile_data.salary_min,
+                    salary_max=user_profile_data.salary_max,
+                    remote_preference=user_profile_data.work_arrangement_preference.value if user_profile_data.work_arrangement_preference else 'any',
+                    has_college_degree=user_profile_data.education_level and user_profile_data.education_level.value in ['bachelors', 'masters', 'phd'],
+                    field_of_study=user_profile_data.field_of_study,
+                    education_details=user_profile_data.education_level.value if user_profile_data.education_level else 'bachelors'
+                )
+                
+                # Get AI settings
+                ai_settings = config_manager.get_ai_settings()
+            
+            # Check and process resume if available - this is critical for job evaluation
+            resume_data = None
+            if resume_manager:
+                try:
+                    resume_status = resume_manager.get_resume_status(user['user_id'])
+                    if resume_status['has_resume'] and not resume_status['is_processed']:
+                        logger.info(f"Processing resume for user {user['user_id']} before job evaluation")
+                        processed_resume = resume_manager.ensure_resume_processed(user['user_id'])
+                        if processed_resume:
+                            logger.info(f"Resume processed successfully for user {user['user_id']}")
+                            resume_data = processed_resume
+                        else:
+                            logger.warning(f"Failed to process resume for user {user['user_id']}")
+                    elif resume_status['has_resume'] and resume_status['is_processed']:
+                        logger.info(f"Resume already processed for user {user['user_id']}")
+                        # Get the processed resume data for job evaluation
+                        resume_data = resume_manager.get_latest_user_resume(user['user_id'])
+                        if resume_data and resume_data.processed_data:
+                            resume_data = resume_data.processed_data
+                    else:
+                        logger.info(f"No resume found for user {user['user_id']}")
+                except Exception as e:
+                    logger.error(f"Error processing resume for user {user['user_id']}: {e}")
+            
+            # Process each scraped job
             for job_listing in scraping_result.jobs:
                 job_data = {
                     'user_id': user['user_id'],
@@ -1516,25 +1802,101 @@ def continue_after_captcha():
                     'location': job_listing.location,
                     'job_description': job_listing.description,
                     'linkedin_url': job_listing.linkedin_url,  # Use linkedin_url field
-                    'job_url': '',  # Clear job_url field to avoid confusion
+                    'job_url': job_listing.application_url,  # Save application URL as job_url
                     'date_posted': job_listing.posted_date.isoformat() if job_listing.posted_date else None,
-                    'work_arrangement': job_listing.remote_type,
+                    'work_arrangement': job_listing.work_arrangement,  # Use new work_arrangement field
                     'experience_level': job_listing.experience_level,
                     'job_type': job_listing.job_type,
                     'date_found': datetime.now().isoformat()
                 }
                 
+                # Save job to database
                 success, message, job = db_manager.jobs.create_job(job_data)
                 if success and job:
                     saved_jobs.append(job)
                     logger.info(f"Saved job after CAPTCHA: {job_listing.title} at {job_listing.company}")
+                    
+                    # Evaluate job if user profile is available
+                    if user_profile and ai_settings:
+                        try:
+                            # Initialize qualification analyzer if not already done
+                            if not hasattr(app, 'qualification_analyzer'):
+                                from src.ai.qualification_analyzer import QualificationAnalyzer
+                                app.qualification_analyzer = QualificationAnalyzer(ai_settings)
+                            
+                            # Prepare job data for evaluation
+                            evaluation_job_data = {
+                                'id': job.job_id,
+                                'title': job.job_title,
+                                'company': job.company_name,
+                                'description': job.job_description or '',
+                                'linkedin_url': job.linkedin_url or ''
+                            }
+                            
+                            # Evaluate job with enhanced weighted scoring
+                            evaluation_result = perform_enhanced_job_evaluation(
+                                app.qualification_analyzer, evaluation_job_data, user_profile_data, ai_settings, resume_data, max_retries=2
+                            )
+                            
+                            if evaluation_result.success and evaluation_result.qualification_result:
+                                # Save qualification result to existing jobs table fields
+                                qual_result = evaluation_result.qualification_result
+                                
+                                # Update job with evaluation results
+                                job_updates = {
+                                    'gemini_evaluation': qual_result.ai_reasoning,
+                                    'gemini_score': qual_result.qualification_score
+                                }
+                                
+                                success, message, updated_job = db_manager.jobs.update_job(job.job_id, user['user_id'], job_updates)
+                                if success:
+                                    evaluated_jobs.append({
+                                        'job_id': job.job_id,
+                                        'job_title': job.job_title,
+                                        'company': job.company_name,
+                                        'qualification_score': qual_result.qualification_score,
+                                        'qualification_status': qual_result.qualification_status.value
+                                    })
+                                    logger.info(f"✅ Evaluated job after CAPTCHA: {job.job_title} - Score: {qual_result.qualification_score}")
+                                else:
+                                    logger.warning(f"Failed to save evaluation to job: {message}")
+                            else:
+                                logger.warning(f"Job evaluation failed for {job.job_title}: {evaluation_result.error_message}")
+                                
+                        except Exception as eval_error:
+                            logger.error(f"Error evaluating job {job.job_title}: {eval_error}")
+                    else:
+                        logger.info(f"Skipping evaluation for job {job.job_title} - no user profile or AI settings")
+                else:
+                    logger.warning(f"Failed to save job: {message}")
             
-            return jsonify({
+            # Prepare response
+            response_data = {
                 'success': True,
                 'message': f'Successfully found and saved {len(saved_jobs)} jobs after CAPTCHA verification',
                 'jobs_count': len(saved_jobs),
                 'captcha_solved': True
-            })
+            }
+            
+            # Add evaluation results if available
+            if evaluated_jobs:
+                response_data['evaluated_jobs_count'] = len(evaluated_jobs)
+                response_data['evaluation_summary'] = {
+                    'total_evaluated': len(evaluated_jobs),
+                    'highly_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'highly_qualified']),
+                    'qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'qualified']),
+                    'somewhat_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'somewhat_qualified']),
+                    'not_qualified': len([j for j in evaluated_jobs if j['qualification_status'] == 'not_qualified'])
+                }
+                response_data['message'] += f' and evaluated {len(evaluated_jobs)} jobs'
+            
+            # Add quota warning if present
+            if 'quota_warning' in session:
+                response_data['quota_warning'] = session.pop('quota_warning')
+                if len(evaluated_jobs) < len(saved_jobs):
+                    response_data['message'] += f'. AI evaluation stopped due to quota limits.'
+            
+            return jsonify(response_data)
             
         finally:
             # Clean up scraper
@@ -2174,7 +2536,7 @@ def jobs_tracker():
                 print(f"🔍 DEBUG: Job {job_id} - All URL fields:")
                 print(f"  linkedin_url: {linkedin_url_raw}")
                 print(f"  job_url: {job_url_raw}")
-                print(f"  linkedin_job_url: {job_dict.get('linkedin_job_url', 'NOT_FOUND')}")
+                print(f"  linkedin_url: {job_dict.get('linkedin_url', 'NOT_FOUND')}")
                 print(f"  url: {job_dict.get('url', 'NOT_FOUND')}")
             
             # Priority order: linkedin_url > job_url (only if it's a LinkedIn URL) > linkedin_job_url > url

@@ -542,7 +542,7 @@
             // Use both possible field names for title and company
             const jobTitle = job.title || job.job_title || 'Unknown Title';
             const companyName = job.company || job.company_name || 'Unknown Company';
-            const linkedinUrl = job.linkedin_url || job.linkedin_job_url || job.job_url || '';
+            const linkedinUrl = job.linkedin_url || '';
             
             return `
                 <div class="col-md-6 col-lg-4 mb-4">
@@ -698,7 +698,7 @@
             const companyName = job.company || job.company_name || 'Unknown Company';
             const jobDescription = job.description || job.job_description || 'No description available';
             const dateFound = job.date_found ? new Date(job.date_found).toLocaleDateString() : 'Unknown';
-            const linkedinUrl = job.linkedin_url || job.linkedin_job_url || job.job_url || '';
+            const linkedinUrl = job.linkedin_url || '';
             
             const modalBody = document.getElementById('jobDetailsModalBody');
             const viewJobBtn = document.getElementById('viewJobBtn');

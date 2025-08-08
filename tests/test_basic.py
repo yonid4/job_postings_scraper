@@ -57,7 +57,7 @@ class TestDataModels:
             title="Software Engineer",
             company="Tech Corp",
             location="San Francisco, CA",
-            job_url="https://example.com/job/123",
+            linkedin_url="https://example.com/job/123",
             job_site="indeed"
         )
         
@@ -105,7 +105,7 @@ class TestDataModels:
             title="Test Job",
             company="Test Company",
             location="Test Location",
-            job_url="https://example.com/job/test",
+            linkedin_url="https://example.com/job/test",
             job_site="indeed",
             salary_min=50000,
             salary_max=80000

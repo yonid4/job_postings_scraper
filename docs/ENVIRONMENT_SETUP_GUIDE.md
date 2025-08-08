@@ -117,11 +117,6 @@ The system validates configuration on startup:
 python tests/test_linkedin_credentials.py
 ```
 
-### Test Google Sheets Integration
-```bash
-python tests/test_google_sheets.py
-```
-
 ### Test AI Configuration
 ```bash
 python tests/test_qualification_system.py

@@ -63,6 +63,7 @@ class Job:
     salary_range: Optional[str] = None
     job_description: Optional[str] = None
     linkedin_url: Optional[str] = None
+    job_url: Optional[str] = None  # Application URL for external applications
     date_posted: Optional[datetime] = None
     date_found: Optional[datetime] = None
     work_arrangement: Optional[str] = None
@@ -205,7 +206,7 @@ class SupabaseManager:
                 logger.info(f"DEBUG: First job from database has keys: {list(data[0].keys())}")
                 logger.info(f"DEBUG: First job linkedin_url: {data[0].get('linkedin_url', 'NOT_FOUND')}")
                 logger.info(f"DEBUG: First job job_url: {data[0].get('job_url', 'NOT_FOUND')}")
-                logger.info(f"DEBUG: First job linkedin_job_url: {data[0].get('linkedin_job_url', 'NOT_FOUND')}")
+                logger.info(f"DEBUG: First job linkedin_url: {data[0].get('linkedin_url', 'NOT_FOUND')}")
                 logger.info(f"DEBUG: First job url: {data[0].get('url', 'NOT_FOUND')}")
                 
                 # Check for specific job ID
@@ -216,7 +217,7 @@ class SupabaseManager:
                         logger.info(f"DEBUG: All keys: {list(job.keys())}")
                         logger.info(f"DEBUG: linkedin_url: {job.get('linkedin_url', 'NOT_FOUND')}")
                         logger.info(f"DEBUG: job_url: {job.get('job_url', 'NOT_FOUND')}")
-                        logger.info(f"DEBUG: linkedin_job_url: {job.get('linkedin_job_url', 'NOT_FOUND')}")
+                        logger.info(f"DEBUG: linkedin_url: {job.get('linkedin_url', 'NOT_FOUND')}")
                         logger.info(f"DEBUG: url: {job.get('url', 'NOT_FOUND')}")
                         logger.info(f"DEBUG: Full job data: {job}")
                         break

@@ -45,6 +45,16 @@ class JobTracker:
         """
         self.db_path = db_path
         self._init_database()
+        
+        # Run database migration for new features
+        try:
+            from .database_migration import run_migration
+            if run_migration(db_path):
+                logger.info("✅ Database migration completed successfully")
+            else:
+                logger.warning("⚠️ Database migration failed, but continuing...")
+        except Exception as e:
+            logger.warning(f"⚠️ Database migration error: {e}, but continuing...")
     
     def _init_database(self):
         """Initialize the database with all required tables."""
@@ -135,9 +145,10 @@ class JobTracker:
                         job_type TEXT,
                         experience_level TEXT,
                         remote_type TEXT,
-                        application_url TEXT,
+                        job_url TEXT,
                         application_deadline TEXT,
                         application_requirements TEXT,
+                        work_arrangement TEXT,
                         posted_date TEXT,
                         scraped_date TEXT NOT NULL,
                         last_updated TEXT NOT NULL,
@@ -456,11 +467,11 @@ class JobTracker:
                         id, title, company, location, linkedin_url, job_site,
                         description, requirements, responsibilities, benefits,
                         salary_min, salary_max, salary_currency, job_type,
-                        experience_level, remote_type, application_url,
-                        application_deadline, application_requirements,
+                        experience_level, remote_type, job_url,
+                        application_deadline, application_requirements, work_arrangement,
                         posted_date, scraped_date, last_updated, is_duplicate,
                         duplicate_of, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     job.id, job.title, job.company, job.location, job.linkedin_url,
                     job.job_site, job.description, json.dumps(job.requirements),
@@ -469,9 +480,10 @@ class JobTracker:
                     job.job_type.value if job.job_type else None,
                     job.experience_level.value if job.experience_level else None,
                     job.remote_type.value if job.remote_type else None,
-                    job.application_url,
+                    job.application_url,  # This will be saved as job_url in DB
                     job.application_deadline.isoformat() if job.application_deadline else None,
                     json.dumps(job.application_requirements),
+                    job.work_arrangement,
                     job.posted_date.isoformat() if job.posted_date else None,
                     job.scraped_date.isoformat(), job.last_updated.isoformat(),
                     job.is_duplicate, job.duplicate_of, job.notes
@@ -671,11 +683,12 @@ class JobTracker:
             job_type=JobType(row[13]) if row[13] else None,
             experience_level=ExperienceLevel(row[14]) if row[14] else None,
             remote_type=RemoteType(row[15]) if row[15] else None,
-            application_url=row[16],
+            application_url=row[16],  # This is job_url in DB, but we map it to application_url in model
             application_deadline=datetime.fromisoformat(row[17]) if row[17] else None,
             application_requirements=json.loads(row[18]) if row[18] else [],
-            posted_date=datetime.fromisoformat(row[19]) if row[19] else None,
-            scraped_date=datetime.fromisoformat(row[20]),
-            last_updated=datetime.fromisoformat(row[21]),
-            is_duplicate=bool(row[22]), duplicate_of=row[23], notes=row[24]
+            work_arrangement=row[19],
+            posted_date=datetime.fromisoformat(row[20]) if row[20] else None,
+            scraped_date=datetime.fromisoformat(row[21]),
+            last_updated=datetime.fromisoformat(row[22]),
+            is_duplicate=bool(row[23]), duplicate_of=row[24], notes=row[25]
         ) 

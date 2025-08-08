@@ -294,10 +294,7 @@ if stats['errors_encountered'] > stats['jobs_extracted'] * 0.1:
 ### Writing Scraped Jobs to Google Sheets
 
 ```python
-from src.data.google_sheets_manager import GoogleSheetsManager
-
-# Initialize Google Sheets manager
-sheets_manager = GoogleSheetsManager()
+# Data is stored in Supabase database
 
 # Scrape jobs
 with LinkedInScraper() as scraper:

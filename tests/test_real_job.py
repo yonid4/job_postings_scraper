@@ -232,21 +232,6 @@ def test_single_job_analysis():
     else:
         print(f"\n❌ Analysis failed - check the URL format")
 
-
-def test_google_sheets():
-    """Test Google Sheets connection."""
-    print("\n🧪 Testing Google Sheets Connection")
-    print("=" * 50)
-    
-    runner = JobAnalysisRunner()
-    success = runner.test_google_sheets()
-    
-    if success:
-        print("✅ Google Sheets is working! You can save results.")
-    else:
-        print("❌ Google Sheets not configured. Results will only be displayed.")
-
-
 def main():
     """Main test function."""
     print("🎯 Job Qualification Analysis - Testing")
@@ -257,11 +242,10 @@ def main():
         print("1. Show proper vs search URLs")
         print("2. Test search page extraction (NEW!)")
         print("3. Test single job analysis")
-        print("4. Test Google Sheets connection")
-        print("5. View your profile")
-        print("6. Exit")
+        print("4. View your profile")
+        print("5. Exit")
         
-        choice = input("\nChoose test (1-6): ").strip()
+        choice = input("\nChoose test (1-5): ").strip()
         
         if choice == "1":
             test_with_proper_urls()
@@ -270,15 +254,13 @@ def main():
         elif choice == "3":
             test_single_job_analysis()
         elif choice == "4":
-            test_google_sheets()
-        elif choice == "5":
             runner = JobAnalysisRunner()
             runner.show_user_profile()
-        elif choice == "6":
+        elif choice == "5":
             print("👋 Goodbye!")
             break
         else:
-            print("❌ Invalid choice. Please select 1-6.")
+            print("❌ Invalid choice. Please select 1-5.")
 
 
 if __name__ == "__main__":

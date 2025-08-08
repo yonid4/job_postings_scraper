@@ -147,9 +147,6 @@ def load_production_config() -> ProductionConfig:
     
     # Check if we have minimum required configuration
     if not validation['linkedin_credentials']:
-        raise ValueError("LinkedIn credentials are required for production use")
-    
-    if not validation['google_sheets_config']:
-        logger.warning("Google Sheets not configured - data will not be persisted")
+        raise ValueError("LinkedIn credentials are required for production use")    
     
     return config 

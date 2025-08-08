@@ -108,7 +108,7 @@ class EnhancedLinkedInScraper(BaseScraper):
             
             # Job information in right panel - Updated for current LinkedIn structure
             'job_title': 'h1.t-24.job-details-jobs-unified-top-card__job-title, .t-24.job-details-jobs-unified-top-card__job-title, h1[class*="job-details-jobs-unified-top-card__job-title"], .jobs-box__job-title, h1, .job-title',
-            'company_name': '.job-details-jobs-unified-top-card__company-name .sRnCkbnFXZXqjWAFekZQCfsMNMELMevApSMNluw, .job-details-jobs-unified-top-card__company-name div[class*="sRnCkbnFXZXqjWAFekZQCfsMNMELMevApSMNluw"], .job-details-jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name span, .jobs-box__company-name, .company-name',
+            'company_name': '.job-details-jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name .boBJlOYxEumoSpnBLwHImNERGkCFUfE, .jobs-box__company-name, .company-name',
             'company_location': '.job-details-jobs-unified-top-card__company-location, .jobs-box__company-location, .location',
             'job_location': '.job-details-jobs-unified-top-card__tertiary-description-container > span[dir="ltr"] > .tvm__text--low-emphasis:first-child',
             'job_type': '.job-details-jobs-unified-top-card__job-type, .jobs-box__job-type, .job-type',
@@ -121,6 +121,8 @@ class EnhancedLinkedInScraper(BaseScraper):
             # Application elements
             'apply_button': '.job-details-jobs-unified-top-card__apply-button, .jobs-box__apply-button, .apply-button',
             'easy_apply_button': '.job-details-jobs-unified-top-card__easy-apply-button, .jobs-box__easy-apply-button, .easy-apply-button, button[aria-label*="Easy Apply"], button[aria-label*="Apply"], .jobs-apply-button',
+            'apply_button_top_card': '.jobs-apply-button--top-card, .jobs-apply-button',
+            'work_arrangement_button': 'button[class*="artdeco-button"][class*="secondary"][class*="muted"], .tvm__text--low-emphasis strong',
             
             # Easy Apply form elements
             'easy_apply_form': '.jobs-easy-apply-content, .jobs-apply-form, .easy-apply-form',
@@ -2702,6 +2704,8 @@ class EnhancedLinkedInScraper(BaseScraper):
                 job_type=job_data.get('job_type'),
                 experience_level=job_data.get('experience_level'),
                 remote_type=job_data.get('remote_type'),
+                application_url=job_data.get('application_url'),
+                work_arrangement=job_data.get('work_arrangement'),
                 requirements=job_data.get('requirements', []),
                 benefits=job_data.get('benefits', []),
                 responsibilities=job_data.get('responsibilities', [])
@@ -2791,7 +2795,7 @@ class EnhancedLinkedInScraper(BaseScraper):
             
             # Extract other fields
             job_data['location'] = self.extract_text_from_selector('company_location')
-            job_data['description'] = self.extract_text_from_selector('job_description')
+            job_data['description'] = self.improve_job_description_extraction()
             job_data['requirements'] = self.extract_requirements_from_panel()
             job_data['benefits'] = self.extract_benefits_from_panel()
             job_data['responsibilities'] = self.extract_responsibilities_from_panel()
@@ -2801,8 +2805,11 @@ class EnhancedLinkedInScraper(BaseScraper):
             job_data['job_id'] = self.extract_job_id_from_url(current_url)
             job_data['url'] = current_url
             
-            # Extract application URL
-            job_data['application_url'] = self.extract_application_url()
+            # Extract application URL (only for external applications)
+            job_data['application_url'] = self.extract_application_url_from_panel()
+            
+            # Extract work arrangement
+            job_data['work_arrangement'] = self.extract_work_arrangement_from_panel()
             
             # Extract posted date
             posted_date_text = self.extract_text_from_selector('job_posted_date')
@@ -2837,7 +2844,7 @@ class EnhancedLinkedInScraper(BaseScraper):
     
     def extract_text_from_selector(self, selector_key: str) -> str:
         """
-        Extract text from an element using a selector key.
+        Extract text from an element using a selector key with robust text extraction.
         
         Args:
             selector_key: Key for the selector in self.selectors
@@ -2851,8 +2858,15 @@ class EnhancedLinkedInScraper(BaseScraper):
                 return ""
             
             element = self.driver.find_element(By.CSS_SELECTOR, selector)
-            return element.text.strip()
             
+            # Use robust text extraction for all selectors
+            if selector_key == 'company_name':
+                return self._extract_text_robust(element)
+            else:
+                # For other selectors, use robust extraction but with basic cleaning
+                text = self._extract_text_robust(element)
+                return text.strip() if text else ""
+                
         except NoSuchElementException:
             return ""
         except Exception as e:
@@ -2889,23 +2903,37 @@ class EnhancedLinkedInScraper(BaseScraper):
     
     def extract_company_name_robust(self) -> str:
         """
-        Extract company name with multiple fallback selectors.
+        Extract company name with multiple fallback selectors and robust text extraction.
         
         Returns:
             Company name, or empty string if not found
         """
         company_selectors = [
-            self.selectors['company_name'],
+            # Primary selector - targets the specific LinkedIn structure
+            '.job-details-jobs-unified-top-card__company-name a',
+            '.job-details-jobs-unified-top-card__company-name .boBJlOYxEumoSpnBLwHImNERGkCFUfE',
+            # Fallback selectors
+            '.job-details-jobs-unified-top-card__company-name',
+            self.selectors.get('company_name', ''),
             '.company-name',
             '[data-test-id="company-name"]',
-            'a[href*="/company/"]'
+            'a[href*="/company/"]',
+            # Additional fallbacks for various LinkedIn layouts
+            '.jobs-unified-top-card__company-name a',
+            '.jobs-unified-top-card__company-name'
         ]
         
         for selector in company_selectors:
+            if not selector:  # Skip empty selectors
+                continue
+                
             try:
                 element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                company = element.text.strip()
+                
+                # Try multiple text extraction methods
+                company = self._extract_text_robust(element)
                 if company:
+                    self.logger.logger.debug(f"Found company name '{company}' using selector: {selector}")
                     return company
             except NoSuchElementException:
                 continue
@@ -2913,7 +2941,108 @@ class EnhancedLinkedInScraper(BaseScraper):
                 self.logger.logger.debug(f"Error with company selector {selector}: {e}")
                 continue
         
+        # Final fallback - try to extract from any link that contains /company/
+        try:
+            company_links = self.driver.find_elements(By.CSS_SELECTOR, 'a[href*="/company/"]')
+            for link in company_links:
+                company = self._extract_text_robust(link)
+                if company and len(company) > 1:  # Avoid single character matches
+                    self.logger.logger.debug(f"Found company name '{company}' from company link fallback")
+                    return company
+        except Exception as e:
+            self.logger.logger.debug(f"Error in company link fallback: {e}")
+        
+        self.logger.logger.warning("Could not extract company name from any selector")
         return ""
+    
+    def _extract_text_robust(self, element) -> str:
+        """
+        Extract text from element using multiple methods to handle HTML comments and dynamic content.
+        
+        Args:
+            element: Selenium WebElement
+            
+        Returns:
+            Cleaned text content
+        """
+        # Method 1: Try standard .text property
+        try:
+            text = element.text
+            cleaned = self._clean_company_text(text)
+            if cleaned:
+                return cleaned
+        except Exception as e:
+            self.logger.logger.debug(f"Method 1 (.text) failed: {e}")
+        
+        # Method 2: Try textContent attribute (handles HTML comments better)
+        try:
+            text = element.get_attribute('textContent')
+            cleaned = self._clean_company_text(text)
+            if cleaned:
+                return cleaned
+        except Exception as e:
+            self.logger.logger.debug(f"Method 2 (textContent) failed: {e}")
+        
+        # Method 3: Try innerText attribute
+        try:
+            text = element.get_attribute('innerText')
+            cleaned = self._clean_company_text(text)
+            if cleaned:
+                return cleaned
+        except Exception as e:
+            self.logger.logger.debug(f"Method 3 (innerText) failed: {e}")
+        
+        # Method 4: Use JavaScript executor to get text content
+        try:
+            text = self.driver.execute_script("return arguments[0].textContent;", element)
+            cleaned = self._clean_company_text(text)
+            if cleaned:
+                return cleaned
+        except Exception as e:
+            self.logger.logger.debug(f"Method 4 (JavaScript textContent) failed: {e}")
+        
+        # Method 5: Try innerHTML and strip HTML tags
+        try:
+            innerHTML = element.get_attribute('innerHTML')
+            if innerHTML:
+                import re
+                # Remove HTML tags but keep text content
+                text = re.sub(r'<[^>]+>', '', innerHTML)
+                cleaned = self._clean_company_text(text)
+                if cleaned:
+                    return cleaned
+        except Exception as e:
+            self.logger.logger.debug(f"Method 5 (innerHTML) failed: {e}")
+        
+        return ""
+    
+    def _clean_company_text(self, text: str) -> str:
+        """
+        Clean company text by removing HTML comments and extra whitespace.
+        
+        Args:
+            text: Raw text extracted from element
+            
+        Returns:
+            Cleaned company name
+        """
+        if not text:
+            return ""
+        
+        # Remove HTML comments and clean whitespace
+        import re
+        
+        # Remove HTML comment patterns that might appear in text
+        text = re.sub(r'<!.*?>', '', text)
+        
+        # Remove extra whitespace and newlines
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        # Remove common LinkedIn artifacts
+        text = re.sub(r'^·\s*', '', text)  # Remove leading bullet points
+        text = re.sub(r'\s*·$', '', text)  # Remove trailing bullet points
+        
+        return text.strip()
     
     def extract_requirements_from_panel(self) -> List[str]:
         """
@@ -3211,6 +3340,210 @@ class EnhancedLinkedInScraper(BaseScraper):
         except Exception as e:
             self.logger.logger.debug(f"Error extracting responsibilities: {e}")
             return []
+    
+    def extract_application_url_from_panel(self) -> Optional[str]:
+        """
+        Extract application URL from the apply button, but ONLY for external applications.
+        
+        Returns:
+            Application URL for external applications, None for Easy Apply
+        """
+        try:
+            # Multiple selectors for apply button
+            apply_button_selectors = [
+                '.jobs-apply-button--top-card',
+                '.jobs-apply-button',
+                'button[aria-label*="Apply"]',
+                'button[data-live-test-job-apply-button]',
+                '.artdeco-button[aria-label*="Apply"]'
+            ]
+            
+            for selector in apply_button_selectors:
+                try:
+                    apply_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if apply_button:
+                        # Get button text to check if it's "Easy Apply"
+                        button_text = apply_button.text.strip().lower()
+                        
+                        # If button text contains "Easy Apply", return None
+                        if 'easy apply' in button_text:
+                            self.logger.logger.debug("Easy Apply button detected - skipping URL extraction")
+                            return None
+                        
+                        # For external applications, try to get the URL
+                        # First try to get href attribute
+                        application_url = apply_button.get_attribute('href')
+                        if application_url:
+                            self.logger.logger.debug(f"Found external application URL: {application_url}")
+                            return application_url
+                        
+                        # If no href, try to get the URL from the button's onclick or data attributes
+                        onclick_url = apply_button.get_attribute('onclick')
+                        if onclick_url and 'window.open' in onclick_url:
+                            # Extract URL from window.open call
+                            import re
+                            match = re.search(r"window\.open\('([^']+)'", onclick_url)
+                            if match:
+                                return match.group(1)
+                        
+                        # Try data attributes
+                        data_url = apply_button.get_attribute('data-url')
+                        if data_url:
+                            return data_url
+                        
+                        # If we found the button but couldn't extract URL, it might be a LinkedIn internal application
+                        # In this case, we still return None to indicate it's not an external application
+                        self.logger.logger.debug("Apply button found but no external URL detected")
+                        return None
+                        
+                except NoSuchElementException:
+                    continue
+                except Exception as e:
+                    self.logger.logger.debug(f"Error with apply button selector {selector}: {e}")
+                    continue
+            
+            # No apply button found
+            self.logger.logger.debug("No apply button found")
+            return None
+            
+        except Exception as e:
+            self.logger.logger.debug(f"Error extracting application URL from panel: {e}")
+            return None
+    
+    def extract_work_arrangement_from_panel(self) -> Optional[str]:
+        """
+        Extract work arrangement type (On-site, Hybrid, Remote) from the job panel.
+        
+        Returns:
+            Work arrangement string, or None if not found
+        """
+        try:
+            # Multiple selectors for work arrangement buttons
+            work_arrangement_selectors = [
+                'button[class*="artdeco-button"][class*="secondary"][class*="muted"]',
+                '.tvm__text--low-emphasis strong',
+                'button[tabindex="0"][class*="artdeco-button"]',
+                '.artdeco-button--secondary.artdeco-button--muted',
+                'span[class*="tvm__text"][class*="low-emphasis"] strong',
+                '.job-details-jobs-unified-top-card__work-arrangement',
+                '.jobs-box__work-arrangement'
+            ]
+            
+            for selector in work_arrangement_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    
+                    for element in elements:
+                        # Get the text content
+                        text = element.text.strip()
+                        if text:
+                            # Clean the text by removing extra whitespace and icons
+                            import re
+                            # Remove HTML entities and extra whitespace
+                            cleaned_text = re.sub(r'\s+', ' ', text)
+                            cleaned_text = cleaned_text.strip()
+                            
+                            # Check if it contains work arrangement keywords
+                            work_arrangement_keywords = ['on-site', 'onsite', 'remote', 'hybrid', 'in-office', 'in office']
+                            for keyword in work_arrangement_keywords:
+                                if keyword.lower() in cleaned_text.lower():
+                                    # Standardize the format
+                                    if 'on-site' in cleaned_text.lower() or 'onsite' in cleaned_text.lower():
+                                        return 'On-site'
+                                    elif 'remote' in cleaned_text.lower():
+                                        return 'Remote'
+                                    elif 'hybrid' in cleaned_text.lower():
+                                        return 'Hybrid'
+                                    elif 'in-office' in cleaned_text.lower() or 'in office' in cleaned_text.lower():
+                                        return 'On-site'
+                            
+                            # If we found text but it doesn't match known patterns, return it as-is
+                            if len(cleaned_text) > 0 and len(cleaned_text) < 50:  # Reasonable length
+                                return cleaned_text
+                                
+                except NoSuchElementException:
+                    continue
+                except Exception as e:
+                    self.logger.logger.debug(f"Error with work arrangement selector {selector}: {e}")
+                    continue
+            
+            # No work arrangement found
+            self.logger.logger.debug("No work arrangement information found")
+            return None
+            
+        except Exception as e:
+            self.logger.logger.debug(f"Error extracting work arrangement from panel: {e}")
+            return None
+    
+    def improve_job_description_extraction(self) -> str:
+        """
+        Enhanced job description extraction with better handling of structured content.
+        
+        Returns:
+            Improved job description text
+        """
+        try:
+            # Multiple selectors for job description with better structure handling
+            description_selectors = [
+                '.jobs-box__html-content.TGeWbMGhgimiYvZWdBnFyOcIdjASiWI.t-14.t-normal.jobs-description-content__text--stretch',
+                '#job-details',
+                '.jobs-description__content.jobs-description-content',
+                '.jobs-box__html-content',
+                '.job-details-jobs-unified-top-card__job-description',
+                '.jobs-box__job-description',
+                '.job-description',
+                '.jobs-description-content__text'
+            ]
+            
+            for selector in description_selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element:
+                        # Get the HTML content for better structure preservation
+                        html_content = element.get_attribute('innerHTML')
+                        text_content = element.text.strip()
+                        
+                        if html_content and text_content:
+                            # Clean and improve the text content
+                            import re
+                            
+                            # Remove excessive whitespace while preserving structure
+                            cleaned_text = re.sub(r'\n\s*\n', '\n\n', text_content)
+                            cleaned_text = re.sub(r' +', ' ', cleaned_text)
+                            
+                            # Remove common LinkedIn artifacts
+                            cleaned_text = re.sub(r'See this and similar jobs on LinkedIn', '', cleaned_text)
+                            cleaned_text = re.sub(r'LinkedIn.*?\.com', '', cleaned_text)
+                            
+                            # Preserve important formatting
+                            # Split by double newlines to preserve paragraph structure
+                            paragraphs = [p.strip() for p in cleaned_text.split('\n\n') if p.strip()]
+                            
+                            # Rejoin with proper spacing
+                            improved_text = '\n\n'.join(paragraphs)
+                            
+                            if improved_text and len(improved_text) > 50:  # Minimum reasonable length
+                                self.logger.logger.debug(f"Successfully extracted improved job description ({len(improved_text)} characters)")
+                                return improved_text
+                                
+                except NoSuchElementException:
+                    continue
+                except Exception as e:
+                    self.logger.logger.debug(f"Error with description selector {selector}: {e}")
+                    continue
+            
+            # Fallback to basic extraction
+            fallback_text = self.extract_text_from_selector('job_description')
+            if fallback_text:
+                self.logger.logger.debug("Using fallback job description extraction")
+                return fallback_text
+            
+            self.logger.logger.debug("No job description found")
+            return ""
+            
+        except Exception as e:
+            self.logger.logger.debug(f"Error improving job description extraction: {e}")
+            return ""
     
     def cleanup(self) -> None:
         """Enhanced cleanup with session management."""

@@ -15,7 +15,7 @@ from typing import Optional, List
 # Add src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.config.config_manager import ConfigurationManager, UserProfile, AISettings
+from src.config.config_manager import ConfigurationError, ConfigurationManager, UserProfile, AISettings
 from src.utils.logger import setup_logging, JobAutomationLogger
 from src.data.models import JobListing, QualificationResult, ScrapingSession, QualificationStatus, UserDecision
 
@@ -221,7 +221,6 @@ class JobQualificationSystem:
         # Show current configuration
         user_profile = self.config_manager.get_user_profile()
         ai_settings = self.config_manager.get_ai_settings()
-        api_settings = self.config_manager.get_api_settings()
         
         print(f"   👤 User Profile:")
         print(f"      - Years of Experience: {user_profile.years_of_experience}")
@@ -235,12 +234,6 @@ class JobQualificationSystem:
         print(f"      - Qualification Threshold: {ai_settings.qualification_threshold}")
         print(f"      - Max Tokens: {ai_settings.max_tokens}")
         print(f"      - Temperature: {ai_settings.temperature}")
-        
-        print(f"   🔌 API Settings:")
-
-        print(f"      - Email notifications: {'Yes' if api_settings.email_notifications else 'No'}")
-    
-
     
     def demonstrate_ai_analysis(self) -> None:
         """Demonstrate AI qualification analysis functionality."""

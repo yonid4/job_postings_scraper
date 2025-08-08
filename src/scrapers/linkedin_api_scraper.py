@@ -314,12 +314,33 @@ class LinkedInAPIScraper(BaseScraper):
                 return None
             
             # Extract company name
+            self.logger.logger.info(f"🏢 Extracting company name for job: '{title}'")
             company = self._extract_text(job_element, [
                 '.job-search-card__subtitle',
                 '.job-card__company-name',
                 '.company-name',
-                '[data-testid*="company-name"]'
+                '[data-testid*="company-name"]',
+                '.job-search-card__company-name',
+                '.job-card__subtitle',
+                'span[class*="company"]',
+                'div[class*="company"]',
+                'a[class*="company"]',
+                '.job-search-card__company',
+                '.job-card__company'
             ])
+            
+            # If standard extraction failed, try extracting from job URL
+            if company is None:
+                self.logger.logger.info("🔗 Trying to extract company from job URL...")
+                linkedin_url = self._extract_job_url(job_element, base_url)
+                company = self._extract_company_from_url(linkedin_url)
+                if company:
+                    self.logger.logger.info(f"✅ Extracted company from URL: '{company}' for job: '{title}'")
+                else:
+                    company = "Unknown"
+                    self.logger.logger.warning(f"❌ Could not extract company name for job: '{title}' - setting to 'Unknown'")
+            else:
+                self.logger.logger.info(f"✅ Extracted company: '{company}' for job: '{title}'")
             
             # Extract location
             location = self._extract_text(job_element, [
@@ -337,8 +358,17 @@ class LinkedInAPIScraper(BaseScraper):
                 '.job-search-card__description',
                 '.job-card__description',
                 '.description',
-                '[data-testid*="description"]'
+                '[data-testid*="description"]',
+                '.job-search-card__snippet',
+                '.job-card__snippet',
+                'div[class*="description"]',
+                'span[class*="description"]',
+                '.job-search-card__job-description',
+                '.job-card__job-description'
             ])
+            
+            # Debug logging
+            self.logger.logger.info(f"Extracted description: '{description[:100] if description else 'None'}...' for job: '{title}'")
             
             # Extract posted date
             posted_date = self._extract_posted_date(job_element)
@@ -373,16 +403,89 @@ class LinkedInAPIScraper(BaseScraper):
     
     def _extract_text(self, element, selectors: List[str]) -> Optional[str]:
         """Extract text from element using multiple selectors."""
-        for selector in selectors:
+        self.logger.logger.info(f"🔍 Trying to extract text with selectors: {selectors}")
+        
+        for i, selector in enumerate(selectors):
             try:
                 found_element = element.select_one(selector)
                 if found_element:
+                    # Try multiple text extraction methods
                     text = found_element.get_text(strip=True)
                     if text:
+                        self.logger.logger.info(f"✅ Selector {i+1}/{len(selectors)} '{selector}' found text: '{text}'")
                         return text
-            except Exception:
+                    else:
+                        # Try alternative text extraction for elements with HTML comments
+                        raw_text = str(found_element)
+                        if '<!--' in raw_text and '-->' in raw_text:
+                            # Extract text from HTML comments format like <!---->Company<!----> 
+                            import re
+                            # Remove HTML tags and comments
+                            cleaned = re.sub(r'<[^>]*>', '', raw_text)
+                            cleaned = re.sub(r'<!--.*?-->', '', cleaned)
+                            cleaned = cleaned.strip()
+                            if cleaned:
+                                self.logger.logger.info(f"✅ Selector {i+1}/{len(selectors)} '{selector}' found text via HTML parsing: '{cleaned}'")
+                                return cleaned
+                        
+                        self.logger.logger.info(f"❌ Selector {i+1}/{len(selectors)} '{selector}' found element but no text")
+                else:
+                    self.logger.logger.info(f"❌ Selector {i+1}/{len(selectors)} '{selector}' found no element")
+            except Exception as e:
+                self.logger.logger.info(f"❌ Selector {i+1}/{len(selectors)} '{selector}' failed: {e}")
                 continue
+        
+        # Enhanced debug: Log the HTML structure if no text found
+        self.logger.logger.info(f"🔍 NO TEXT FOUND with any selector. Element HTML structure:")
+        self.logger.logger.info(f"Element HTML: {element.prettify()[:1000]}...")
+        
         return None
+    
+    def _extract_company_from_url(self, url: str) -> Optional[str]:
+        """
+        Extract company name from LinkedIn job URL.
+        
+        LinkedIn URLs often follow the pattern:
+        /jobs/view/job-title-at-COMPANY-jobid
+        
+        Args:
+            url: LinkedIn job URL
+            
+        Returns:
+            Company name or None if not found
+        """
+        if not url:
+            return None
+            
+        try:
+            import re
+            
+            # Pattern for LinkedIn job URLs: /jobs/view/job-title-at-COMPANY-jobid
+            pattern = r'/jobs/view/[^/]+-at-([^-]+)-\d+' 
+            match = re.search(pattern, url)
+            
+            if match:
+                company = match.group(1)
+                # Clean up company name
+                company = company.replace('-', ' ').title()
+                self.logger.logger.info(f"🎯 Extracted company from URL pattern: '{company}'")
+                return company
+            
+            # Alternative pattern: look for company parameter
+            pattern2 = r'[?&]company=([^&]+)'
+            match2 = re.search(pattern2, url)
+            if match2:
+                company = match2.group(1)
+                company = company.replace('%20', ' ').replace('+', ' ')
+                self.logger.logger.info(f"🎯 Extracted company from URL parameter: '{company}'")
+                return company
+                
+            self.logger.logger.info(f"❌ No company pattern found in URL: {url[:100]}...")
+            return None
+            
+        except Exception as e:
+            self.logger.logger.info(f"❌ Error extracting company from URL: {e}")
+            return None
     
     def _extract_job_url(self, element, base_url: str) -> str:
         """Extract job URL from element."""

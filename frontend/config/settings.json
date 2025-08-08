@@ -1,10 +1,6 @@
 {
   "ai_settings": {
-    "api_key": "AIzaSyDzSwHL8HSGfNCbfMpN4WSUU0eo7G6z74A"
-  },
-  "api_settings": {
-    "google_sheets_credentials_path": "/Users/yonid/Desktop/autoApply-bot/auto-apply-bot-466218-5a1d69f23d44.json",
-    "google_sheets_spreadsheet_id": "1JRbxQYOWlVLuSgv4uhfM2ljfiiBydYsD6fj_0geYRQk"
+    "api_key": "$GEMINI_API_KEY"
   },
   "user_profile": {
     "years_of_experience": 0,

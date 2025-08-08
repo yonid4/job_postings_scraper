@@ -100,7 +100,31 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Credentials
+### 2. Setup Database
+Before running the application, you need to set up the database schema in your Supabase project:
+
+```bash
+# Navigate to the database migrations folder
+cd database_migrations
+
+# Execute the SQL files in your Supabase SQL editor or using psql
+# Run them in this order to respect foreign key dependencies:
+```
+
+**Required Database Tables** (execute in order):
+1. `jobs_schema.sql` - Core jobs table with AI evaluation data
+2. `user_profiles_schema.sql` - User profile information and preferences
+3. `user_resume_schema.sql` - Resume storage and processing data
+4. `job_searches_schema.sql` - Search history and filters
+5. `applications_schema.sql` - Job application tracking
+6. `job_favorites_schema.sql` - User favorite job bookmarks
+
+**Database Setup Options:**
+- **Supabase Dashboard**: Copy and paste each SQL file content into your Supabase project's SQL editor
+- **Command Line**: Use `psql` to execute the files if you have direct database access
+- **Application**: The system includes automatic database migration capabilities
+
+### 3. Configure Credentials
 ```bash
 # Copy environment template
 cp env.template .env
@@ -122,7 +146,7 @@ nano .env
 - `DELAY_*` - Timing configurations
 - `TESTING_MODE` - Set to true for development (bypasses email verification)
 
-### 3. Run the Application
+### 4. Run the Application
 
 #### Web Interface (Recommended)
 ```bash

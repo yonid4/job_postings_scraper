@@ -10,7 +10,6 @@ This directory contains comprehensive test suites for the Job Application Automa
 - `test_linkedin_scraper.py` - Basic LinkedIn scraper tests
 - `test_linkedin_fixes.py` - LinkedIn scraper fix tests
 - `test_linkedin_date_filter.py` - Date filtering functionality tests
-- `test_linkedin_duplicate_detection.py` - Duplicate detection tests
 - `test_linkedin_public_scraping.py` - Public scraping tests
 
 ### **Integration Tests**
@@ -25,9 +24,7 @@ This directory contains comprehensive test suites for the Job Application Automa
 ### **Component Tests**
 - `test_qualification_system.py` - AI qualification system tests
 - `test_resume_system.py` - Resume processing tests
-- `test_google_sheets.py` - Google Sheets integration tests
 - `test_job_tracking_system.py` - Job tracking system tests
-- `test_duplicate_detection.py` - Duplicate detection tests
 - `test_url_extraction.py` - URL extraction tests
 - `test_search_extraction.py` - Search extraction tests
 - `test_real_job.py` - Real job processing tests

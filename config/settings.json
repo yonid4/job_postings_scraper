@@ -39,7 +39,7 @@
     "temperature": 0.1,
     "analysis_timeout": 60,
     "retry_attempts": 3,
-    "api_key": "AIzaSyDzSwHL8HSGfNCbfMpN4WSUU0eo7G6z74A"
+    "api_key": "${GEMINI_API_KEY}"
   },
   "job_criteria": {
     "keywords": [
@@ -66,16 +66,6 @@
     "respect_robots_txt": true,
     "timeout": 30,
     "retry_attempts": 3
-  },
-  "api_settings": {
-    "google_sheets_credentials_path": "/Users/yonid/Desktop/autoApply-bot/config/auto-apply-bot-466218-5a1d69f23d44.json",
-    "google_sheets_spreadsheet_id": "1JRbxQYOWlVLuSgv4uhfM2ljfiiBydYsD6fj_0geYRQk",
-    "google_sheets_worksheet_name": "Qualified Jobs",
-    "email_notifications": false,
-    "email_smtp_server": "",
-    "email_smtp_port": 587,
-    "email_username": "",
-    "email_password": ""
   },
   "linkedin": {
     "username": "",

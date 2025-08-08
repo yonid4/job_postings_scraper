@@ -208,6 +208,9 @@ class JobListing:
     application_deadline: Optional[datetime] = None
     application_requirements: List[str] = field(default_factory=list)
     
+    # Work arrangement
+    work_arrangement: Optional[str] = None
+    
     # Metadata
     posted_date: Optional[datetime] = None
     scraped_date: datetime = field(default_factory=datetime.now)
@@ -251,6 +254,7 @@ class JobListing:
             'application_url': self.application_url,
             'application_deadline': self.application_deadline.isoformat() if self.application_deadline else None,
             'application_requirements': self.application_requirements,
+            'work_arrangement': self.work_arrangement,
             'posted_date': self.posted_date.isoformat() if self.posted_date else None,
             'scraped_date': self.scraped_date.isoformat(),
             'last_updated': self.last_updated.isoformat(),
@@ -293,6 +297,7 @@ class JobListing:
             application_url=data.get('application_url'),
             application_deadline=application_deadline,
             application_requirements=data.get('application_requirements', []),
+            work_arrangement=data.get('work_arrangement'),
             posted_date=posted_date,
             scraped_date=scraped_date,
             last_updated=last_updated,

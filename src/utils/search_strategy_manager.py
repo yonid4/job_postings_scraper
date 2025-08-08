@@ -107,7 +107,8 @@ class SearchStrategyManager:
         has_basic_params = bool(search_params.keywords and search_params.location)
         
         if has_basic_params:
-            self.logger.info("Basic search parameters only. Using API-only approach.")
+            # Use API-only for basic searches (keywords + location only)
+            self.logger.info("Basic search parameters only (keywords + location). Using API-only for fast execution.")
             return False
         else:
             # If no parameters, default to WebDriver for safety
@@ -191,7 +192,7 @@ class SearchStrategyManager:
             
             return f"WebDriver required for advanced filters: {', '.join(advanced_filters)}"
         else:
-            return "API-only approach sufficient for basic search (keywords + location)"
+            return "API-only approach for basic search (keywords + location only) - fast execution"
     
     def _get_performance_impact(self, method: SearchMethod) -> str:
         """Get performance impact description."""

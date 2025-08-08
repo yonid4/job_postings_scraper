@@ -73,19 +73,6 @@ class ScrapingSettings:
     timeout: int = 30  # Request timeout in seconds
     retry_attempts: int = 3
 
-
-@dataclass
-class APISettings:
-    """Configuration for external API integrations."""
-    
-    
-    email_notifications: bool = False
-    email_smtp_server: str = ""
-    email_smtp_port: int = 587
-    email_username: str = ""
-    email_password: str = ""
-
-
 @dataclass
 class LinkedInSettings:
     """Configuration for LinkedIn scraping."""
@@ -224,16 +211,7 @@ class ConfigurationManager:
             retry_attempts=scraping_data.get('retry_attempts', 3)
         )
     
-    def get_api_settings(self) -> APISettings:
-        """Get API settings configuration."""
-        api_data = self.config.get('api_settings', {})
-        return APISettings(
-            email_notifications=api_data.get('email_notifications', False),
-            email_smtp_server=api_data.get('email_smtp_server', ''),
-            email_smtp_port=api_data.get('email_smtp_port', 587),
-            email_username=api_data.get('email_username', ''),
-            email_password=api_data.get('email_password', '')
-        )
+
     
     def get_linkedin_settings(self) -> LinkedInSettings:
         """Get LinkedIn settings configuration."""
