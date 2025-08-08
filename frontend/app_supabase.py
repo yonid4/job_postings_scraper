@@ -394,6 +394,135 @@ def settings():
         return render_template('settings.html')
 
 
+@app.route('/api/user-settings', methods=['GET'])
+@login_required
+def get_user_settings():
+    """Get user settings via API."""
+    try:
+        user = get_current_user()
+        if not user:
+            logger.warning("User not authenticated for settings request")
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            logger.error(f"No user_id found in user object: {user}")
+            return jsonify({'error': 'User ID not found'}), 400
+        
+        logger.info(f"Getting settings for user {user_id}")
+        
+        # Use authenticated database manager for consistency
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            logger.error("Could not get authenticated database manager for reading settings")
+            # Return defaults if we can't access database
+            return jsonify({'score_threshold': 70, 'job_limit': 25})
+        
+        # Try to get settings from user_profiles table
+        response = db_manager.client.table('user_profiles').select('score_threshold, job_limit').eq('user_id', user_id).execute()
+        
+        settings = {}
+        if response.data and len(response.data) > 0:
+            profile_data = response.data[0]
+            settings['score_threshold'] = profile_data.get('score_threshold', 70)
+            settings['job_limit'] = profile_data.get('job_limit', 25)
+            logger.info(f"Found existing settings for user {user_id}: {settings}")
+        else:
+            # Return defaults if no profile exists
+            settings['score_threshold'] = 70
+            settings['job_limit'] = 25
+            logger.info(f"No profile found for user {user_id}, returning defaults: {settings}")
+        
+        return jsonify(settings)
+        
+    except Exception as e:
+        logger.error(f"Error getting user settings: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'error': 'An error occurred'}), 500
+
+@app.route('/api/user-settings', methods=['POST'])
+@login_required
+def save_user_settings():
+    """Save user settings via API."""
+    try:
+        user = get_current_user()
+        if not user:
+            logger.warning("User not authenticated for settings save request")
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            logger.error(f"No user_id found in user object: {user}")
+            return jsonify({'error': 'User ID not found'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        logger.info(f"Saving settings for user {user_id}: {data}")
+        
+        # Validate score threshold
+        score_threshold = data.get('score_threshold')
+        if score_threshold is not None:
+            try:
+                score_threshold = int(score_threshold)
+                if score_threshold < 1 or score_threshold > 100:
+                    return jsonify({'error': 'Score threshold must be between 1 and 100'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Invalid score threshold value'}), 400
+        
+        # Validate job limit
+        job_limit = data.get('job_limit')
+        if job_limit is not None:
+            try:
+                job_limit = int(job_limit)
+                if job_limit < 1 or job_limit > 100:
+                    return jsonify({'error': 'Job limit must be between 1 and 100'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Invalid job limit value'}), 400
+        
+        # Use authenticated database manager with service role key (bypasses RLS)
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            logger.error("Could not get authenticated database manager")
+            return jsonify({'error': 'Database access error'}), 500
+        
+        # Update or create user profile with settings
+        update_data = {}
+        if score_threshold is not None:
+            update_data['score_threshold'] = score_threshold
+        if job_limit is not None:
+            update_data['job_limit'] = job_limit
+        
+        if update_data:
+            logger.info(f"Upserting user {user_id} with data: {update_data}")
+            
+            # Add user_id to the data for upsert
+            upsert_data = {
+                'user_id': user_id,
+                **update_data
+            }
+            
+            # Use authenticated client with service role key (bypasses RLS)
+            # Specify conflict resolution on user_id column for proper upsert behavior
+            response = db_manager.client.table('user_profiles').upsert(upsert_data, on_conflict='user_id').execute()
+            
+            if response.data:
+                logger.info(f"Settings saved successfully for user {user_id}")
+                return jsonify({'success': True, 'message': 'Settings saved successfully'})
+            else:
+                logger.warning(f"Failed to save settings for user {user_id}: no data returned from upsert")
+                return jsonify({'error': 'Failed to save settings'}), 500
+        else:
+            return jsonify({'success': True, 'message': 'No changes to save'})
+        
+    except Exception as e:
+        logger.error(f"Error saving user settings: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'error': 'An error occurred'}), 500
+
 @app.route('/settings/update', methods=['POST'])
 @login_required
 def update_settings():
@@ -404,8 +533,27 @@ def update_settings():
             flash("User not authenticated.", "error")
             return redirect(url_for('settings'))
         
-        # Handle settings update logic here
-        flash("Settings updated successfully!", "success")
+        # Get form data
+        score_threshold = request.form.get('score_threshold')
+        
+        if score_threshold:
+            try:
+                score_threshold = int(score_threshold)
+                if 1 <= score_threshold <= 100:
+                    # Save to database
+                    auth = get_auth_context()
+                    auth.supabase.table('user_profiles').update({
+                        'score_threshold': score_threshold
+                    }).eq('user_id', user['user_id']).execute()
+                    
+                    flash("Settings updated successfully!", "success")
+                else:
+                    flash("Score threshold must be between 1 and 100.", "error")
+            except (ValueError, TypeError):
+                flash("Invalid score threshold value.", "error")
+        else:
+            flash("Settings updated successfully!", "success")
+        
         return redirect(url_for('settings'))
         
     except Exception as e:
@@ -1057,7 +1205,10 @@ def search_linkedin_jobs():
         
         keywords = request.form.get('keywords', '').strip()
         location = request.form.get('location', '').strip()
-        max_jobs = int(request.form.get('max_jobs', 10))
+        max_jobs = int(request.form.get('job_limit', request.form.get('max_jobs', 25)))
+        
+        logger.info(f"Job search request: keywords='{keywords}', location='{location}', job_limit={max_jobs}")
+        logger.info(f"Form data received: {dict(request.form)}")
         
         if not keywords:
             return jsonify({'success': False, 'error': 'Keywords are required'})
@@ -1210,11 +1361,13 @@ def search_linkedin_jobs():
                     base_url="https://www.linkedin.com",
                     delay_min=scraping_settings.delay_min,
                     delay_max=scraping_settings.delay_max,
-                    max_jobs_per_session=scraping_settings.max_jobs_per_session,
+                    max_jobs_per_session=max_jobs,  # Use user's job limit setting
                     respect_robots_txt=scraping_settings.respect_robots_txt,
                     request_timeout=scraping_settings.timeout,
                     max_retries=scraping_settings.retry_attempts
                 )
+                # Set max_jobs_per_search for API scraper compatibility
+                scraping_config.max_jobs_per_search = max_jobs
                 scraper = create_linkedin_api_scraper(scraping_config)
                 logger.info("Using API-only scraper for fast execution")
                 
@@ -1231,11 +1384,35 @@ def search_linkedin_jobs():
                 # Use WebDriver scraper for advanced searches with CAPTCHA handling
                 from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
                 
-                scraper = create_enhanced_linkedin_scraper(
-                    username=linkedin_username,
-                    password=linkedin_password,
-                    use_persistent_session=True
+                # Create enhanced scraper with user's job limit
+                from src.config.config_manager import ConfigurationManager
+                from src.scrapers.base_scraper import ScrapingConfig
+                from src.utils.session_manager import SessionManager
+                
+                # Get configuration and override max_jobs
+                config_manager_temp = ConfigurationManager()
+                linkedin_config = config_manager_temp.get_linkedin_settings()
+                
+                # Create scraping config with user's job limit
+                enhanced_config = ScrapingConfig(
+                    max_jobs_per_session=max_jobs,  # Use user's job limit setting
+                    delay_min=linkedin_config.delay_between_actions,
+                    delay_max=linkedin_config.delay_between_actions + 1.0,
+                    max_retries=3,
+                    page_load_timeout=30,
+                    site_name="linkedin",
+                    base_url="https://www.linkedin.com"
                 )
+                enhanced_config.max_jobs_per_search = max_jobs  # For compatibility
+                
+                # Create session manager
+                session_manager = SessionManager()
+                
+                # Create enhanced scraper with custom config
+                from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+                scraper = EnhancedLinkedInScraper(enhanced_config, session_manager)
+                scraper.username = linkedin_username
+                scraper.password = linkedin_password
                 
                 # PROPER CAPTCHA INTEGRATION: Set up CAPTCHA handler BEFORE scraping
                 if hasattr(scraper, 'driver') and scraper.driver:
@@ -2091,6 +2268,10 @@ def jobs_page():
                 logger.warning(f"Skipping job without valid ID: {job_dict}")
                 continue
             
+            # Extract additional fields including scores
+            gemini_score = job_dict.get('gemini_score')
+            gemini_evaluation = job_dict.get('gemini_evaluation', '')
+            
             # Create job data in the format your template expects
             job_data_entry = {
                 'job': {
@@ -2104,7 +2285,9 @@ def jobs_page():
                     'job_type': job_type,
                     'experience_level': experience_level,
                     'work_arrangement': work_arrangement,
-                    'date_found': date_found
+                    'date_found': date_found,
+                    'gemini_score': gemini_score,  # Include the AI score
+                    'gemini_evaluation': gemini_evaluation  # Include the AI evaluation
                 },
                 'application': None,  # You'd need to fetch actual application details
                 'is_favorited': False,  # You'd need to fetch favorites data
@@ -2555,6 +2738,10 @@ def jobs_tracker():
             if linkedin_url in ['#', 'null', 'None', '']:
                 linkedin_url = ''
             
+            # Extract additional fields including scores
+            gemini_score = job_dict.get('gemini_score')
+            gemini_evaluation = job_dict.get('gemini_evaluation', '')
+            
             # Create enhanced job data in the format your template expects
             job_data_entry = {
                 'job': {
@@ -2569,7 +2756,9 @@ def jobs_tracker():
                     'job_type': job_type,
                     'experience_level': experience_level,
                     'work_arrangement': work_arrangement,
-                    'date_found': date_found
+                    'date_found': date_found,
+                    'gemini_score': gemini_score,  # Include the AI score
+                    'gemini_evaluation': gemini_evaluation  # Include the AI evaluation
                 },
                 'application': application,
                 'is_favorited': is_favorited,

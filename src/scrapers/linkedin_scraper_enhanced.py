@@ -11,8 +11,11 @@ This module provides an enhanced LinkedIn scraper that:
 
 import time
 import random
+import re
+import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -502,7 +505,7 @@ class EnhancedLinkedInScraper(BaseScraper):
                 self.logger.logger.warning(f"Could not inspect filter elements: {e}")
             
             # Try to find and click the date filter button
-            if self._find_and_click_date_filter_button(button_selectors):
+            if self._find_and_click_date_filter_button(button_selectors, days):
                 self.logger.logger.info("✅ Date filter successfully applied!")
                 return True
             else:
@@ -900,7 +903,7 @@ class EnhancedLinkedInScraper(BaseScraper):
                 ".artdeco-modal__content .text-heading-large.inline-block"
             ]
     
-    def _find_and_click_date_filter_button(self, selectors: List[str]) -> bool:
+    def _find_and_click_date_filter_button(self, selectors: List[str], days: int = 7) -> bool:
         """Find and click the date filter button."""
         # First, try to click the "All filters" button to open the filter modal
         try:
@@ -3475,12 +3478,379 @@ class EnhancedLinkedInScraper(BaseScraper):
             self.logger.logger.debug(f"Error extracting work arrangement from panel: {e}")
             return None
     
-    def improve_job_description_extraction(self) -> str:
+    def _clean_element_text(self, text: str) -> str:
         """
-        Enhanced job description extraction with better handling of structured content.
+        Clean text from individual HTML elements (paragraphs, list items, etc.).
+        
+        Args:
+            text: Raw text from HTML element
         
         Returns:
-            Improved job description text
+            Cleaned text fragment
+        """
+        if not text:
+            return ""
+            
+        # Remove excessive whitespace
+        cleaned = re.sub(r'\s+', ' ', text.strip())
+        
+        # Remove LinkedIn-specific artifacts
+        linkedin_artifacts = [
+            'Apply now', 'See similar jobs', 'Show more', 'Show less',
+            'Click to view job details', 'See more jobs like this',
+            'Apply on company website', 'Easy Apply'
+        ]
+        
+        for artifact in linkedin_artifacts:
+            cleaned = cleaned.replace(artifact, '')
+            
+        return cleaned.strip()
+    
+    def _clean_raw_text(self, text: str) -> str:
+        """
+        Clean the final raw text output for the entire job description.
+        
+        Args:
+            text: Raw text from BeautifulSoup's get_text()
+            
+        Returns:
+            Cleaned final text
+        """
+        if not text:
+            return ""
+            
+        # Handle paragraph spacing
+        text = re.sub(r'\n\s*\n', '\n\n', text)
+        text = re.sub(r' +', ' ', text)
+        
+        # Add line breaks before section headers that are running together
+        text = self._fix_section_header_spacing(text)
+        
+        # Remove LinkedIn navigation artifacts
+        linkedin_patterns = [
+            r'See this and similar jobs on LinkedIn.*?$',
+            r'LinkedIn.*?\.com.*?$',
+            r'Apply on LinkedIn.*?$',
+            r'Save job.*?$',
+            r'Report job.*?$',
+            r'\d+\s*applicants?.*?$'
+        ]
+        
+        for pattern in linkedin_patterns:
+            text = re.sub(pattern, '', text, flags=re.MULTILINE | re.IGNORECASE)
+            
+        # Clean up excessive newlines but preserve paragraph structure
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+        return '\n\n'.join(paragraphs)
+    
+    def _fix_section_header_spacing(self, text: str) -> str:
+        """
+        Fix section headers that are running together with previous text.
+        Ensures each header is on its own line with proper spacing.
+        
+        Args:
+            text: Text with potentially malformed section headers
+            
+        Returns:
+            Text with properly spaced section headers
+        """
+        if not text:
+            return ""
+            
+        # Common section headers that should be on their own lines
+        section_headers = [
+            'Job Summary:', 'Responsibilities:', 'Qualifications:', 'Requirements:',
+            'Required:', 'Preferred:', 'Company:', 'About the Company:', 'Benefits:',
+            'Skills:', 'Experience:', 'Education:', 'What you\'ll do:', 'What we offer:',
+            'Key Responsibilities:', 'About the Role:', 'About this role:'
+        ]
+        
+        for header in section_headers:
+            # Pattern 1: non-whitespace character followed directly by header
+            pattern1 = rf'([^\s\n]){re.escape(header)}'
+            replacement1 = rf'\1\n\n{header}\n'
+            text = re.sub(pattern1, replacement1, text, flags=re.IGNORECASE)
+            
+            # Pattern 2: header followed directly by non-whitespace (except newline)
+            pattern2 = rf'{re.escape(header)}([^\s\n])'
+            replacement2 = rf'{header}\n\1'
+            text = re.sub(pattern2, replacement2, text, flags=re.IGNORECASE)
+        
+        # General pattern: sentence ending + capitalized word + colon
+        # This catches headers we might have missed
+        text = re.sub(r'([.!?])([A-Z][a-zA-Z\s]*:)(?=\s|$)', r'\1\n\n\2\n', text)
+        
+        # Clean up excessive line breaks but preserve header spacing
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        return text
+    
+    def _is_section_header(self, text: str) -> bool:
+        """
+        Detect if a text fragment is likely a section header.
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            True if text appears to be a section header
+        """
+        if not text or len(text) > 100:  # Headers are usually short
+            return False
+            
+        text_lower = text.lower().strip()
+        
+        # Common job description section headers
+        section_keywords = [
+            'about', 'role', 'position', 'responsibilities', 'requirements',
+            'qualifications', 'skills', 'experience', 'benefits', 'what we offer',
+            'what you\'ll do', 'what you will do', 'key responsibilities',
+            'job description', 'overview', 'summary', 'duties', 'tasks',
+            'preferred', 'nice to have', 'bonus', 'plus', 'ideal candidate',
+            'compensation', 'salary', 'perks', 'culture', 'team', 'company',
+            'what we\'re looking for', 'your background', 'education'
+        ]
+        
+        # Check for keyword matches
+        for keyword in section_keywords:
+            if keyword in text_lower:
+                return True
+                
+        # Check for formatting patterns
+        if text.endswith(':') or text.isupper() or text.istitle():
+            return True
+            
+        # Check for numbered/bulleted sections
+        if re.match(r'^\d+\.\s+[A-Z]', text) or re.match(r'^[A-Z][^a-z]*:?$', text):
+            return True
+            
+        return False
+    
+    def _generate_formatted_text(self, sections: list) -> str:
+        """
+        Convert structured sections back into nicely formatted display text.
+        
+        Args:
+            sections: List of section dictionaries with 'title' and 'content'
+            
+        Returns:
+            Formatted text for display
+        """
+        if not sections:
+            return ""
+            
+        formatted_parts = []
+        
+        for section in sections:
+            title = section.get('title', '').strip()
+            content = section.get('content', '').strip()
+            
+            if not content:
+                continue
+                
+            if title:
+                # Add header with underline
+                formatted_parts.append(f"{title}")
+                formatted_parts.append("=" * len(title))
+                formatted_parts.append("")
+                
+            # Determine if content should be bulleted
+            should_bullet = self._should_bullet_content(title, content)
+            
+            # Process content
+            if '\n' in content:
+                lines = [line.strip() for line in content.split('\n') if line.strip()]
+                if len(lines) > 1 and should_bullet:
+                    # Convert to bullet points only if appropriate
+                    bullet_content = []
+                    for line in lines:
+                        if not line.startswith('•') and not line.startswith('-'):
+                            bullet_content.append(f"• {line}")
+                        else:
+                            bullet_content.append(line)
+                    formatted_parts.append('\n'.join(bullet_content))
+                else:
+                    # Keep as regular paragraphs
+                    formatted_parts.append('\n'.join(lines))
+            else:
+                formatted_parts.append(content)
+                
+            formatted_parts.append("")  # Add spacing between sections
+            
+        return '\n'.join(formatted_parts).strip()
+    
+    def _should_bullet_content(self, title: str, content: str) -> bool:
+        """
+        Determine if content should be formatted as bullet points.
+        
+        Args:
+            title: Section title
+            content: Section content
+            
+        Returns:
+            True if content should be bulleted
+        """
+        if not title or not content:
+            return False
+            
+        title_lower = title.lower()
+        
+        # Don't bullet these types of sections
+        non_bullet_sections = [
+            'about', 'job summary', 'overview', 'description', 
+            'company', 'about the company', 'about us',
+            'location', 'salary', 'compensation'
+        ]
+        
+        for section in non_bullet_sections:
+            if section in title_lower:
+                return False
+        
+        # Do bullet these types of sections
+        bullet_sections = [
+            'responsibilities', 'requirements', 'qualifications', 
+            'skills', 'duties', 'tasks', 'preferred', 'benefits',
+            'what you', 'what we', 'key responsibilities'
+        ]
+        
+        for section in bullet_sections:
+            if section in title_lower:
+                return True
+                
+        # Check content patterns - if it looks like a list, bullet it
+        lines = content.split('\n')
+        if len(lines) > 2:
+            # If most lines start with common list indicators, it's probably a list
+            list_indicators = 0
+            for line in lines:
+                line = line.strip()
+                if (line.startswith('•') or line.startswith('-') or 
+                    line.startswith('*') or line.endswith(':') or
+                    len(line.split()) < 15):  # Short lines often indicate list items
+                    list_indicators += 1
+            
+            return list_indicators >= len(lines) * 0.6  # 60% threshold
+            
+        return False
+    
+    def _parse_job_description_html(self, html_content: str) -> dict:
+        """
+        Main HTML parsing engine that converts LinkedIn's messy HTML into structured data.
+        
+        Args:
+            html_content: Raw HTML content from job description
+            
+        Returns:
+            Dictionary with structured job description data
+        """
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+                
+            sections = []
+            current_section = {'title': '', 'content': ''}
+            
+            # Walk through elements in order to maintain structure
+            for element in soup.find_all(['p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li']):
+                text = self._clean_element_text(element.get_text())
+                
+                if not text:
+                    continue
+                    
+                # Check if this is a section header
+                if self._is_section_header(text) and element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                    # Save current section if it has content
+                    if current_section['content']:
+                        sections.append(current_section.copy())
+                    
+                    # Start new section
+                    current_section = {'title': text, 'content': ''}
+                    
+                elif element.name in ['ul', 'ol']:
+                    # Handle lists
+                    list_items = []
+                    for li in element.find_all('li'):
+                        li_text = self._clean_element_text(li.get_text())
+                        if li_text:
+                            list_items.append(li_text)
+                    
+                    if list_items:
+                        list_content = '\n'.join(list_items)
+                        if current_section['content']:
+                            current_section['content'] += '\n\n' + list_content
+                        else:
+                            current_section['content'] = list_content
+                            
+                elif element.name == 'li':
+                    # Skip individual list items as they're handled by ul/ol
+                    continue
+                    
+                else:
+                    # Regular content
+                    if self._is_section_header(text) and not current_section['title']:
+                        current_section['title'] = text
+                    else:
+                        if current_section['content']:
+                            current_section['content'] += '\n\n' + text
+                        else:
+                            current_section['content'] = text
+            
+            # Add the last section
+            if current_section['content']:
+                sections.append(current_section)
+                
+            # If no structured sections found, create a single section
+            if not sections:
+                raw_text = self._clean_raw_text(soup.get_text())
+                if raw_text:
+                    sections = [{'title': 'Job Description', 'content': raw_text}]
+                    
+            # Generate different formats
+            raw_text = self._clean_raw_text(soup.get_text())
+            formatted_text = self._generate_formatted_text(sections)
+            
+            return {
+                'raw_text': raw_text,
+                'formatted_text': formatted_text,
+                'sections': sections,
+                'structure_type': 'structured' if len(sections) > 1 else 'basic'
+            }
+            
+        except Exception as e:
+            self.logger.logger.debug(f"Error parsing HTML content: {e}")
+            # Fallback to basic text extraction
+            try:
+                soup = BeautifulSoup(html_content, 'html.parser')
+                raw_text = self._clean_raw_text(soup.get_text())
+                return {
+                    'raw_text': raw_text,
+                    'formatted_text': raw_text,
+                    'sections': [{'title': 'Job Description', 'content': raw_text}] if raw_text else [],
+                    'structure_type': 'fallback'
+                }
+            except:
+                return {
+                    'raw_text': '',
+                    'formatted_text': '',
+                    'sections': [],
+                    'structure_type': 'empty'
+                }
+    
+    def improve_job_description_extraction(self) -> dict:
+        """
+        Enhanced job description extraction that returns structured, displayable formats.
+        
+        Returns:
+            Dictionary containing multiple formats of the job description:
+            {
+                'raw_text': str,           # Clean plain text
+                'formatted_text': str,     # Formatted with headers/bullets
+                'sections': list,          # Structured sections data  
+                'structure_type': str      # 'structured', 'basic', 'fallback', 'empty'
+            }
         """
         try:
             # Multiple selectors for job description with better structure handling
@@ -3499,32 +3869,21 @@ class EnhancedLinkedInScraper(BaseScraper):
                 try:
                     element = self.driver.find_element(By.CSS_SELECTOR, selector)
                     if element:
-                        # Get the HTML content for better structure preservation
+                        # Get the HTML content for structure preservation
                         html_content = element.get_attribute('innerHTML')
-                        text_content = element.text.strip()
                         
-                        if html_content and text_content:
-                            # Clean and improve the text content
-                            import re
+                        if html_content and html_content.strip():
+                            result = self._parse_job_description_html(html_content)
                             
-                            # Remove excessive whitespace while preserving structure
-                            cleaned_text = re.sub(r'\n\s*\n', '\n\n', text_content)
-                            cleaned_text = re.sub(r' +', ' ', cleaned_text)
-                            
-                            # Remove common LinkedIn artifacts
-                            cleaned_text = re.sub(r'See this and similar jobs on LinkedIn', '', cleaned_text)
-                            cleaned_text = re.sub(r'LinkedIn.*?\.com', '', cleaned_text)
-                            
-                            # Preserve important formatting
-                            # Split by double newlines to preserve paragraph structure
-                            paragraphs = [p.strip() for p in cleaned_text.split('\n\n') if p.strip()]
-                            
-                            # Rejoin with proper spacing
-                            improved_text = '\n\n'.join(paragraphs)
-                            
-                            if improved_text and len(improved_text) > 50:  # Minimum reasonable length
-                                self.logger.logger.debug(f"Successfully extracted improved job description ({len(improved_text)} characters)")
-                                return improved_text
+                            # Validate that we got meaningful content
+                            if result['raw_text'] and len(result['raw_text']) > 50:
+                                self.logger.logger.debug(
+                                    f"Successfully extracted structured job description "
+                                    f"({len(result['raw_text'])} characters, "
+                                    f"{len(result['sections'])} sections, "
+                                    f"type: {result['structure_type']})"
+                                )
+                                return result
                                 
                 except NoSuchElementException:
                     continue
@@ -3536,14 +3895,72 @@ class EnhancedLinkedInScraper(BaseScraper):
             fallback_text = self.extract_text_from_selector('job_description')
             if fallback_text:
                 self.logger.logger.debug("Using fallback job description extraction")
-                return fallback_text
+                cleaned_text = self._clean_raw_text(fallback_text)
+                return {
+                    'raw_text': cleaned_text,
+                    'formatted_text': cleaned_text,
+                    'sections': [{'title': 'Job Description', 'content': cleaned_text}] if cleaned_text else [],
+                    'structure_type': 'fallback'
+                }
             
             self.logger.logger.debug("No job description found")
-            return ""
+            return {
+                'raw_text': '',
+                'formatted_text': '',
+                'sections': [],
+                'structure_type': 'empty'
+            }
             
         except Exception as e:
             self.logger.logger.debug(f"Error improving job description extraction: {e}")
+            return {
+                'raw_text': '',
+                'formatted_text': '',
+                'sections': [],
+                'structure_type': 'empty'
+            }
+    
+    def get_job_description_for_display(self, job_data: dict, format_type: str = 'formatted') -> str:
+        """
+        Public method to get job description in different formats for UI display.
+        
+        Args:
+            job_data: Dictionary returned from improve_job_description_extraction()
+            format_type: 'raw', 'formatted', or 'card'
+            
+        Returns:
+            Job description formatted for the specified display type
+        """
+        if not job_data or not isinstance(job_data, dict):
             return ""
+            
+        if format_type == 'raw':
+            return job_data.get('raw_text', '')
+            
+        elif format_type == 'formatted':
+            return job_data.get('formatted_text', '') or job_data.get('raw_text', '')
+            
+        elif format_type == 'card':
+            # Truncated version for job card previews (max 400 chars)
+            text = job_data.get('formatted_text', '') or job_data.get('raw_text', '')
+            if len(text) <= 400:
+                return text
+            
+            # Smart truncation - try to end at sentence boundary
+            truncated = text[:400]
+            last_period = truncated.rfind('.')
+            last_newline = truncated.rfind('\n')
+            
+            # Use the latest boundary found
+            boundary = max(last_period, last_newline)
+            if boundary > 200:  # Make sure we have reasonable content
+                return truncated[:boundary + 1].strip() + "..."
+            else:
+                return truncated.strip() + "..."
+                
+        else:
+            # Default to formatted
+            return job_data.get('formatted_text', '') or job_data.get('raw_text', '')
     
     def cleanup(self) -> None:
         """Enhanced cleanup with session management."""

@@ -1,8 +1,8 @@
-# User Guide - Job Application Automation System
+# User Guide - AI Job Qualification Screening System
 
 ## 📋 Overview
 
-Welcome to the Job Application Automation System! This comprehensive guide will help you navigate all the features of the web interface, from initial setup to advanced job analysis and tracking.
+Welcome to the AI Job Qualification Screening System! This comprehensive guide will help you navigate all the features of the web interface, from initial setup to advanced AI-powered job analysis and professional application tracking.
 
 ## 🚀 Quick Start
 

@@ -181,10 +181,7 @@
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyFilters()">
-                                    <i class="fas fa-magic me-1"></i> Apply Filters to URLs
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearFilters()">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
                                     <i class="fas fa-times me-1"></i> Clear Filters
                                 </button>
                             </div>
@@ -196,21 +193,18 @@
                 
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="limit_jobs" checked>
-                            <label class="form-check-label" for="limit_jobs">
-                                Limit to first 10 jobs per search
-                            </label>
+                        <div class="mb-3">
+                            <label for="job_limit" class="form-label">Job Limit: <span id="job-limit-value">25</span> jobs</label>
+                            <input type="range" class="form-range" id="job_limit" name="job_limit" 
+                                   min="1" max="100" value="25" oninput="updateJobLimitValue(this.value)">
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>1 job</span>
+                                <span>50 jobs</span>
+                                <span>100 jobs</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="save_to_sheets" checked>
-                            <label class="form-check-label" for="save_to_sheets">
-                                Save qualified jobs
-                            </label>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -483,6 +477,17 @@ function analyzeJobs() {
             const searchMethod = isFastMode ? 'Fast API Mode' : 'WebDriver Mode';
             const estimatedTime = isFastMode ? '2-5 seconds' : '10-30 seconds';
             
+            // Get job limit value early for status display
+            const jobLimitValue = $('#job_limit').val();
+            const jobLimit = parseInt(jobLimitValue) || 25;
+            
+            console.log('Job Limit Debug:', {
+                slider_element: $('#job_limit').length > 0 ? 'Found' : 'NOT FOUND',
+                raw_value: jobLimitValue,
+                parsed_value: jobLimit,
+                element_value: document.getElementById('job_limit') ? document.getElementById('job_limit').value : 'ELEMENT NOT FOUND'
+            });
+            
             // Use new LinkedIn search with strategy information
             statusDiv.html(`
                 <div class="d-flex align-items-center mb-2">
@@ -493,7 +498,8 @@ function analyzeJobs() {
                     <strong>Search Method:</strong> ${searchMethod}<br>
                     <strong>Estimated Time:</strong> ${estimatedTime}<br>
                     <strong>Keywords:</strong> ${keywords}<br>
-                    <strong>Location:</strong> ${location}
+                    <strong>Location:</strong> ${location}<br>
+                    <strong>Job Limit:</strong> ${jobLimit} jobs
                     ${datePosted && datePosted !== 'any' ? `<br><strong>Date Filter:</strong> Past ${datePosted} days` : ''}
                 </div>
             `);
@@ -505,7 +511,9 @@ function analyzeJobs() {
             keywords: keywords,
             location: location,
             date_posted: datePosted,
-            qualification_threshold: $('#qualification_threshold').val()
+            qualification_threshold: $('#qualification_threshold').val(),
+            job_limit_raw: $('#job_limit').val(),
+            job_limit_parsed: parseInt($('#job_limit').val()) || 25
         });
         
         if (datePosted && datePosted !== 'any') {
@@ -518,6 +526,7 @@ function analyzeJobs() {
                 <div class="small text-muted">
                     <strong>Keywords:</strong> ${keywords}<br>
                     <strong>Location:</strong> ${location}<br>
+                    <strong>Job Limit:</strong> ${jobLimit} jobs<br>
                     <strong>Date Filter:</strong> Past ${datePosted} days
                 </div>
             `);
@@ -530,6 +539,7 @@ function analyzeJobs() {
                 <div class="small text-muted">
                     <strong>Keywords:</strong> ${keywords}<br>
                     <strong>Location:</strong> ${location}<br>
+                    <strong>Job Limit:</strong> ${jobLimit} jobs<br>
                     <strong>Date Filter:</strong> Any time
                 </div>
             `);
@@ -541,6 +551,7 @@ function analyzeJobs() {
             location: location,
             date_posted: datePosted,
             qualification_threshold: $('#qualification_threshold').val(),
+            job_limit: jobLimit,
             work_arrangement: $('input[name="remote"]:checked').map(function() { return this.value; }).get(),
             experience_level: $('input[name="experience"]:checked').map(function() { return this.value; }).get(),
             job_type: $('input[name="job_type"]:checked').map(function() { return this.value; }).get()
@@ -672,7 +683,8 @@ function analyzeJobs() {
             experience: $('input[name="experience"]:checked').map(function() { return this.value; }).get(),
             job_type: $('input[name="job_type"]:checked').map(function() { return this.value; }).get(),
             date_posted: $('#date_posted').val(),
-            qualification_threshold: $('#qualification_threshold').val()
+            qualification_threshold: $('#qualification_threshold').val(),
+            job_limit: parseInt($('#job_limit').val()) || 25
         };
         
         // Make API call
@@ -1074,6 +1086,11 @@ function buildLinkedInSearchUrl() {
     return searchUrl;
 }
 
+// Update job limit value display
+function updateJobLimitValue(value) {
+    document.getElementById('job-limit-value').textContent = value;
+}
+
 // Clear filters function (optional)
 function clearFilters() {
     // Clear all filter inputs
@@ -1085,6 +1102,8 @@ function clearFilters() {
     $('#date_posted').val('any');
     $('#qualification_threshold').val('70');
     $('.threshold-value').text('70%');
+    $('#job_limit').val('25');
+    updateJobLimitValue('25');
     
     showAlert('Filters cleared!', 'info');
 }

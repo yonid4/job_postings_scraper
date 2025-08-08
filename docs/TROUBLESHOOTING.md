@@ -1,8 +1,8 @@
-# Troubleshooting Guide - Job Application Automation System
+# Troubleshooting Guide - AI Job Qualification Screening System
 
 ## 📋 Overview
 
-This troubleshooting guide helps you resolve common issues with the Job Application Automation System. If you're experiencing problems, start here to find solutions to the most frequent issues.
+This troubleshooting guide helps you resolve common issues with the AI Job Qualification Screening System. If you're experiencing problems, start here to find solutions to the most frequent issues.
 
 ## 🔍 Quick Diagnosis
 

@@ -63,6 +63,8 @@ class UserProfile:
     profile_completed: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    score_threshold: Optional[int] = 70
+    job_limit: Optional[int] = 25
 
 
 class UserProfileManager:

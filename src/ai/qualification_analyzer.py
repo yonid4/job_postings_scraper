@@ -945,7 +945,7 @@ class QualificationAnalyzer:
             logger.info(f"📋 Processing job {i}/{len(jobs)}: {job_title}")
             
             # Evaluate job with retry logic
-            evaluation_result = self.evaluate_job_with_retry(job, user_profile, max_retries)
+            evaluation_result = self.evaluate_job_with_retry(job=job, user_profile=user_profile, max_retries=max_retries)
             all_evaluation_results.append(evaluation_result)
             
             if evaluation_result.success:
@@ -1170,7 +1170,7 @@ class QualificationAnalyzer:
     
     def _create_analysis_prompt(self, request: AnalysisRequest) -> str:
         """
-        Create an enhanced analysis prompt with sophisticated weighted scoring.
+        Create an analysis prompt with sophisticated weighted scoring.
         
         This method implements intelligent scoring based on available data:
         - Resume + Profile: 70% resume analysis + 30% profile verification
@@ -1193,9 +1193,9 @@ class QualificationAnalyzer:
         salary_min = request.salary_min or "not specified"
         salary_max = request.salary_max or "not specified"
         
-        # Create the enhanced prompt
+        # Create the prompt
         prompt = f"""
-You are an expert job qualification analyst. Analyze this job posting for qualification fit using sophisticated weighted scoring.
+You are an expert job qualification analyst. You MUST return ONLY valid, parseable JSON with no additional text.
 
 JOB DETAILS:
 - Title: {request.job_title}
@@ -1223,40 +1223,55 @@ SCORING INSTRUCTIONS:
 CALCULATE COMPONENT SCORES (0-100 each):
 {self._get_component_instructions(has_resume)}
 
-OUTPUT FORMAT (must be valid JSON):
+CRITICAL JSON FORMATTING REQUIREMENTS:
+1. Return ONLY valid JSON - no text before or after
+2. All strings must use proper JSON escaping
+3. No markdown formatting (**, __, etc.) in JSON string values
+4. Use plain text descriptions without special characters
+5. All numeric values must be integers (no decimals)
+6. Array elements must be properly quoted strings
+
+REQUIRED JSON STRUCTURE (copy this exact format):
 {{
-    "qualification_score": <final weighted score 1-100, rounded to integer>,
-    "confidence_score": <confidence in this assessment 1-100>,
+    "qualification_score": 85,
+    "confidence_score": 90,
     "component_scores": {{
         {self._get_component_json_keys(has_resume)}
     }},
-    "ai_reasoning": "<detailed explanation of the weighted scoring calculation>",
-    "required_experience": "<specific experience requirements from job>",
-    "education_requirements": "<specific education requirements from job>",
+    "ai_reasoning": "Detailed explanation using plain text only. No special formatting or escape characters.",
+    "required_experience": "Experience requirements from job posting",
+    "education_requirements": "Education requirements from job posting", 
     "key_skills_mentioned": ["skill1", "skill2", "skill3"],
-    "matching_strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+    "matching_strengths": ["strength 1", "strength 2", "strength 3"],
     "potential_concerns": ["concern 1", "concern 2", "concern 3"],
-    "recommendations": ["specific action 1", "specific action 2", "specific action 3"],
+    "recommendations": ["action 1", "action 2", "action 3"],
     "requirements_met": "X out of Y key requirements satisfied"
 }}
 
 SCORING GUIDELINES:
-- **90-100: Excellent Match** - Exceeds most requirements, strong recommendation to apply
-- **85-89: Very Strong Match** - Meets most requirements with minor gaps
-- **70-84: Good Match** - Solid fit with some skill gaps that can be addressed  
-- **55-69: Moderate Match** - Some relevant experience but significant preparation needed
-- **40-54: Poor Match** - Major qualification gaps, not recommended
-- **1-39: Very Poor Match** - Fundamental misalignment, strongly discourage
+- 90-100: Excellent Match - Exceeds most requirements
+- 85-89: Very Strong Match - Meets most requirements with minor gaps  
+- 70-84: Good Match - Solid fit with some addressable gaps
+- 55-69: Moderate Match - Some relevant experience, significant prep needed
+- 40-54: Poor Match - Major qualification gaps
+- 1-39: Very Poor Match - Fundamental misalignment
 
-KEY ANALYSIS FOCUS:
-1. **Precise Component Scoring**: Score each component 0-100 based on job requirements
-2. **Weighted Calculation**: Apply exact weights to get final score
-3. **Specific Evidence**: Reference exact resume details or profile elements
-4. **Actionable Insights**: Provide concrete improvement recommendations
-5. **Requirement Mapping**: Count satisfied vs total key requirements
-6. **Realistic Assessment**: Balance optimism with honest evaluation
+ANALYSIS REQUIREMENTS:
+1. Score each component 0-100 based on job requirements
+2. Apply exact weights to calculate final score
+3. Use specific evidence from resume/profile
+4. Provide actionable recommendations
+5. Count satisfied vs total requirements
+6. Be realistic but constructive
 
-MUST RETURN VALID JSON ONLY - NO ADDITIONAL TEXT BEFORE OR AFTER.
+RESPONSE VALIDATION:
+- Your response will be parsed as JSON
+- Invalid JSON will cause system failure
+- Use only plain text in string values
+- No special characters that need escaping
+- Test your JSON mentally before responding
+
+RESPOND WITH VALID JSON ONLY:
 """
         
         return prompt.strip()

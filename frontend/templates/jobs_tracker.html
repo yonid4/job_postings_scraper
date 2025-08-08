@@ -121,6 +121,13 @@
             color: var(--secondary-color);
         }
         
+        /* Custom modal width for large screens */
+        @media (min-width: 992px) {
+            .modal-lg {
+                max-width: 900px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .stats-row .col-md-2 {
                 flex: 0 0 50%;
@@ -337,9 +344,51 @@
         let currentFilter = 'all';
         let currentSearch = '';
         let currentJobIndex = -1; // Track which job is currently being viewed
+        let scoreThreshold = 70; // Default AI score threshold
+
+        // Debug function to inspect job data structure
+        function debugJobData() {
+            if (window.jobsData && window.jobsData.length > 0) {
+                console.log('Jobs Tracker Debug: Loaded', window.jobsData.length, 'jobs');
+                
+                const firstJob = window.jobsData[0];
+                const score = getJobScore(firstJob.job);
+                console.log('First job score:', score);
+                
+                // Quick description format check
+                const desc = firstJob.job.description || firstJob.job.job_description;
+                if (typeof desc === 'string' && desc.startsWith('{')) {
+                    console.log('Description appears to be JSON string');
+                } else {
+                    console.log('Description format:', typeof desc);
+                }
+            }
+        }
+
+        // Load user's score threshold setting
+        function loadScoreThreshold() {
+            fetch('/api/user-settings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.score_threshold) {
+                    scoreThreshold = data.score_threshold;
+                    console.log('Loaded user score threshold:', scoreThreshold);
+                    // Re-filter jobs with new threshold
+                    displayJobs();
+                }
+            })
+            .catch(error => {
+                console.log('Using default threshold:', scoreThreshold);
+            });
+        }
 
         // Initialize page when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
+            // Debug the data structure first
+            debugJobData();
+            
+            // Load user settings first, then initialize
+            loadScoreThreshold();
             initializeJobsTracker();
         });
 
@@ -498,6 +547,12 @@
             return window.jobsData.filter(jobItem => {
                 const job = jobItem.job;
                 
+                // AI Score threshold filter - check first to filter out low-scoring jobs
+                const jobScore = getJobScore(job);
+                if (jobScore !== null && jobScore < scoreThreshold) {
+                    return false;
+                }
+                
                 // Search filter
                 if (currentSearch) {
                     const searchableText = [
@@ -530,6 +585,225 @@
             });
         }
 
+        // Helper function to parse description if it's a JSON string
+        function parseJobDescription(description) {
+            if (!description) return null;
+            
+            // If it's already an object, return as-is
+            if (typeof description === 'object') {
+                return description;
+            }
+            
+            // If it's a string, try to parse it as JSON
+            if (typeof description === 'string') {
+                try {
+                    const parsed = JSON.parse(description);
+                    // Check if it has the expected structure
+                    if (parsed && (parsed.raw_text || parsed.formatted_text || parsed.sections)) {
+                        return parsed;
+                    }
+                } catch (e) {
+                    // If parsing fails, treat as plain text
+                    return null;
+                }
+            }
+            
+            return null;
+        }
+        
+        // Helper function to clean up duplicated content
+        function cleanFormattedText(text) {
+            if (!text) return '';
+            
+            // First, fix section headers that are running together with previous text
+            text = addSectionHeaderBreaks(text);
+            
+            // Split into lines and remove duplicates while preserving order
+            const lines = text.split('\n');
+            const seen = new Set();
+            const cleanLines = [];
+            
+            for (const line of lines) {
+                const trimmed = line.trim();
+                
+                // Skip empty lines and duplicates
+                if (!trimmed || seen.has(trimmed)) {
+                    continue;
+                }
+                
+                // Don't add bullets to section headers or company descriptions
+                let processedLine = line;
+                if (isNotListContent(trimmed)) {
+                    // Remove bullet if it was incorrectly added to headers/descriptions
+                    processedLine = processedLine.replace(/^•\s*/, '');
+                }
+                
+                seen.add(trimmed);
+                cleanLines.push(processedLine);
+            }
+            
+            return cleanLines.join('\n');
+        }
+        
+        // Helper function to add line breaks before section headers
+        function addSectionHeaderBreaks(text) {
+            if (!text) return '';
+            
+            // Common section headers that should be on their own lines
+            const sectionHeaders = [
+                'Job Summary:', 'Responsibilities:', 'Qualifications:', 'Requirements:', 
+                'Required:', 'Preferred:', 'Company:', 'About the Company:', 'Benefits:', 
+                'Skills:', 'Experience:', 'Education:', 'What you\'ll do:', 'What we offer:',
+                'Key Responsibilities:', 'About the Role:', 'About this role:'
+            ];
+            
+            let formatted = text;
+            
+            sectionHeaders.forEach(header => {
+                const escapedHeader = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                
+                // Pattern 1: non-newline character followed directly by header
+                const regex1 = new RegExp(`([^\\n])${escapedHeader}`, 'gi');
+                formatted = formatted.replace(regex1, `$1\n\n${header}\n`);
+                
+                // Pattern 2: header followed directly by non-whitespace (except newline)
+                const regex2 = new RegExp(`${escapedHeader}([^\\s\\n])`, 'gi');
+                formatted = formatted.replace(regex2, `${header}\n$1`);
+                
+                // Pattern 3: ensure headers that already have some spacing get proper isolation
+                const regex3 = new RegExp(`\\n${escapedHeader}([^\\s\\n])`, 'gi');
+                formatted = formatted.replace(regex3, `\n${header}\n$1`);
+            });
+            
+            // Also handle general pattern: sentence ending + capitalized header
+            // Example: "tools.Responsibilities:" becomes "tools.\n\nResponsibilities:\n"
+            formatted = formatted.replace(/([.!?])([A-Z][a-zA-Z\s]*:)(?=\s|$)/g, '$1\n\n$2\n');
+            
+            // Clean up excessive line breaks but preserve header spacing
+            formatted = formatted.replace(/\n{3,}/g, '\n\n');
+            
+            return formatted;
+        }
+        
+        // Helper function to identify content that shouldn't be bulleted
+        function isNotListContent(text) {
+            const trimmed = text.toLowerCase().trim();
+            
+            // Section headers (usually end with colon or are short)
+            if (trimmed.endsWith(':') || trimmed.length < 30) {
+                return true;
+            }
+            
+            // Company descriptions or about sections (usually longer paragraphs)
+            const companyIndicators = [
+                'is a', 'founded in', 'headquartered in', 'team size',
+                'platform designed', 'company that', 'organization'
+            ];
+            
+            for (const indicator of companyIndicators) {
+                if (trimmed.includes(indicator)) {
+                    return true;
+                }
+            }
+            
+            // Headers that commonly appear
+            const commonHeaders = [
+                'job summary', 'about the job', 'company', 'about the company',
+                'overview', 'description', 'location', 'salary', 'compensation'
+            ];
+            
+            for (const header of commonHeaders) {
+                if (trimmed.includes(header)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        // Helper function to get formatted job description
+        function getFormattedJobDescription(job, format = 'card') {
+            const jobDescription = job.description || job.job_description || '';
+            
+            // Try to parse the description
+            const parsedDescription = parseJobDescription(jobDescription);
+            
+            if (parsedDescription && parsedDescription.structure_type) {
+                // Use the new structured description format
+                switch (format) {
+                    case 'card':
+                        // Use the first section's content or raw text, truncated
+                        if (parsedDescription.sections && parsedDescription.sections.length > 0) {
+                            const firstSection = parsedDescription.sections[0];
+                            const content = firstSection.content || '';
+                            // Clean up and truncate for card display - remove section headers and job board text
+                            let cleaned = content
+                                .replace(/About the job|Job Summary:|Responsibilities:|Qualifications:|Company:|Jobright is an AI-powered.*?trust\./gi, '')
+                                .replace(/Ramp is a financial operations platform.*?AI\./gi, 'Ramp is seeking an experienced AI Product Engineer.')
+                                .trim();
+                            
+                            // Take the first meaningful sentence or paragraph
+                            const sentences = cleaned.split(/[.!?]+/);
+                            const firstSentence = sentences.find(s => s.trim().length > 50) || sentences[0] || cleaned;
+                            
+                            return firstSentence.substring(0, 200).trim() + (firstSentence.length > 200 ? '...' : '');
+                        }
+                        const rawText = parsedDescription.raw_text || '';
+                        return rawText.substring(0, 200) + (rawText.length > 200 ? '...' : '');
+                        
+                    case 'formatted':
+                        // Use formatted text, but clean up duplications
+                        const formattedText = parsedDescription.formatted_text || parsedDescription.raw_text || '';
+                        return cleanFormattedText(formattedText);
+                        
+                    case 'raw':
+                    default:
+                        return parsedDescription.raw_text || '';
+                }
+            } else {
+                // Handle old plain text format or JSON string that couldn't be parsed
+                const text = (typeof jobDescription === 'string') ? jobDescription : 'No description available';
+                return format === 'card' ? text.substring(0, 200) + (text.length > 200 ? '...' : '') : text;
+            }
+        }
+        
+        // Helper function to get job score
+        function getJobScore(job) {
+            // Check various score fields that might be available
+            let score = job.gemini_score || job.qualification_score || job.score || 
+                       job.ai_score || job.match_score || job.suitability_score;
+            
+            // Check if score is in nested objects
+            if (!score && job.analysis) {
+                score = job.analysis.score || job.analysis.qualification_score;
+            }
+            
+            if (!score && job.qualification) {
+                score = job.qualification.score || job.qualification.qualification_score;
+            }
+            
+            // Handle string scores that need parsing
+            if (typeof score === 'string') {
+                const parsed = parseFloat(score);
+                score = isNaN(parsed) ? null : parsed;
+            }
+            
+            // Convert score to percentage if it's on a 0-10 scale
+            if (score && score <= 10) {
+                score = score * 10; // Convert 7.5/10 to 75%
+            }
+            
+            return score ? Math.round(score) : null;
+        }
+        
+        // Helper function to get score color
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'warning';
+            if (score >= 40) return 'info';
+            return 'danger';
+        }
+
         // Create job card HTML
         function createJobCardHTML(jobItem, index) {
             const job = jobItem.job;
@@ -537,12 +811,22 @@
             const appliedClass = jobItem.has_applied ? 'applied' : '';
             const favoriteIcon = jobItem.is_favorited ? 'fas fa-heart text-danger' : 'far fa-heart text-muted';
             
-
-            
             // Use both possible field names for title and company
             const jobTitle = job.title || job.job_title || 'Unknown Title';
             const companyName = job.company || job.company_name || 'Unknown Company';
             const linkedinUrl = job.linkedin_url || '';
+            
+            // Get formatted description and score
+            const cardDescription = getFormattedJobDescription(job, 'card');
+            
+            // Check for score in both job and jobItem levels
+            let jobScore = getJobScore(job);
+            if (!jobScore) {
+                // Check if score is at jobItem level
+                jobScore = getJobScore(jobItem);
+            }
+            
+            const scoreColor = jobScore ? getScoreColor(jobScore) : 'secondary';
             
             return `
                 <div class="col-md-6 col-lg-4 mb-4">
@@ -550,9 +834,12 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h5 class="card-title mb-1">${escapeHtml(jobTitle)}</h5>
-                                <button class="btn btn-sm btn-link p-0" onclick="event.stopPropagation(); toggleFavorite(${index})">
-                                    <i class="${favoriteIcon}"></i>
-                                </button>
+                                <div class="d-flex align-items-center gap-2">
+                                    ${jobScore ? `<span class="badge bg-${scoreColor}">${jobScore}%</span>` : ''}
+                                    <button class="btn btn-sm btn-link p-0" onclick="event.stopPropagation(); toggleFavorite(${index})">
+                                        <i class="${favoriteIcon}"></i>
+                                    </button>
+                                </div>
                             </div>
                             <h6 class="card-subtitle mb-2 text-muted">
                                 <i class="fas fa-building me-1"></i>
@@ -564,13 +851,21 @@
                                     ${escapeHtml(job.location || 'Remote')}
                                 </small>
                             </p>
-                            ${job.salary ? `
+                            ${job.salary || job.salary_range ? `
                                 <p class="card-text">
                                     <small class="text-success">
                                         <i class="fas fa-dollar-sign me-1"></i>
-                                        ${escapeHtml(job.salary)}
+                                        ${escapeHtml(job.salary || job.salary_range)}
                                     </small>
                                 </p>
+                            ` : ''}
+                            
+                            ${cardDescription ? `
+                                <div class="mb-3">
+                                    <p class="card-text text-muted" style="font-size: 0.9rem; line-height: 1.4;">
+                                        ${escapeHtml(cardDescription)}
+                                    </p>
+                                </div>
                             ` : ''}
                             <div class="mb-3">
                                 <span class="badge ${jobItem.has_applied ? 'bg-success' : 'bg-secondary'}">
@@ -688,17 +983,23 @@
             const job = jobItem.job;
             currentJobIndex = index;
             
-            // Debug: Log the job data to see what's available
-            console.log('Job data:', job);
-            console.log('Job source:', jobItem.source);
-            console.log('Job linkedin_url:', job.linkedin_url);
+            // Get job details
             
             // Use both possible field names for title and company
             const jobTitle = job.title || job.job_title || 'Unknown Title';
             const companyName = job.company || job.company_name || 'Unknown Company';
-            const jobDescription = job.description || job.job_description || 'No description available';
+            const jobDescription = getFormattedJobDescription(job, 'formatted');
             const dateFound = job.date_found ? new Date(job.date_found).toLocaleDateString() : 'Unknown';
             const linkedinUrl = job.linkedin_url || '';
+            
+            // Check for score in both job and jobItem levels
+            let jobScore = getJobScore(job);
+            if (!jobScore) {
+                // Check if score is at jobItem level
+                jobScore = getJobScore(jobItem);
+            }
+            
+            const scoreColor = jobScore ? getScoreColor(jobScore) : 'secondary';
             
             const modalBody = document.getElementById('jobDetailsModalBody');
             const viewJobBtn = document.getElementById('viewJobBtn');
@@ -715,6 +1016,7 @@
                         </h6>
                     </div>
                     <div class="col-md-4 text-end">
+                        ${jobScore ? `<span class="badge bg-${scoreColor} fs-6 me-2">${jobScore}% Match</span>` : ''}
                         <span class="badge ${jobItem.has_applied ? 'bg-success' : 'bg-secondary'} fs-6">
                             ${jobItem.has_applied ? 'Applied' : 'Not Applied'}
                         </span>
@@ -760,10 +1062,34 @@
                 
                 <div class="mb-3">
                     <p><strong><i class="fas fa-file-alt me-2"></i>Job Description:</strong></p>
-                    <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
-                        <p class="mb-0">${escapeHtml(jobDescription)}</p>
+                    <div class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+                        <div class="job-description-content">${formatJobDescriptionForDisplay(jobDescription)}</div>
                     </div>
                 </div>
+                
+                ${jobScore ? `
+                <div class="mb-3">
+                    <p><strong><i class="fas fa-chart-line me-2"></i>AI Match Score:</strong></p>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-3" style="height: 25px;">
+                            <div class="progress-bar bg-${scoreColor}" role="progressbar" 
+                                 style="width: ${jobScore}%" aria-valuenow="${jobScore}" aria-valuemin="0" aria-valuemax="100">
+                                ${jobScore}%
+                            </div>
+                        </div>
+                        <span class="badge bg-${scoreColor} fs-6">${getScoreLabel(jobScore)}</span>
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${job.gemini_evaluation ? `
+                <div class="mb-3">
+                    <p><strong><i class="fas fa-robot me-2"></i>AI Evaluation:</strong></p>
+                    <div class="bg-light p-3 rounded">
+                        <p class="mb-0">${escapeHtml(job.gemini_evaluation)}</p>
+                    </div>
+                </div>
+                ` : ''}
             `;
             
             // Update modal buttons
@@ -804,6 +1130,73 @@
             
             // TODO: Implement actual data refresh
             console.log('Refresh data functionality will be implemented');
+        }
+
+        // Helper function to format job description for display
+        function formatJobDescriptionForDisplay(description) {
+            if (!description) return 'No description available';
+            
+            let formatted = escapeHtml(description);
+            
+            // First, ensure section headers are properly isolated on their own lines
+            const sectionHeaders = [
+                'Job Summary:', 'Responsibilities:', 'Qualifications:', 'Requirements:', 
+                'Required:', 'Preferred:', 'Company:', 'About the Company:', 'Benefits:', 
+                'Skills:', 'Experience:', 'Education:', 'What you\'ll do:', 'What we offer:',
+                'Key Responsibilities:', 'About the Role:', 'About this role:'
+            ];
+            
+            sectionHeaders.forEach(header => {
+                const escapedHeader = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                
+                // Pattern 1: non-newline character followed directly by header
+                const regex1 = new RegExp(`([^\\n])${escapedHeader}`, 'gi');
+                formatted = formatted.replace(regex1, `$1\n\n${header}\n`);
+                
+                // Pattern 2: header followed directly by non-whitespace (except newline)
+                const regex2 = new RegExp(`${escapedHeader}([^\\s\\n])`, 'gi');
+                formatted = formatted.replace(regex2, `${header}\n$1`);
+            });
+            
+            // Also handle general pattern of text ending with period/punctuation followed by capitalized word and colon
+            formatted = formatted.replace(/([.!?])([A-Z][^:\n]*:)(?![A-Z])/g, '$1\n\n$2\n');
+            
+            // Ensure bullet points have proper line breaks
+            formatted = formatted.replace(/([^\n])\u2022/g, '$1\n\u2022');
+            
+            // Clean up excessive line breaks but preserve header spacing
+            formatted = formatted.replace(/\n{3,}/g, '\n\n');
+            
+            // Convert newlines to HTML breaks and preserve formatting
+            formatted = formatted
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/\u2022/g, '&bull;');
+            
+            // Wrap in paragraphs but avoid double-wrapping
+            if (!formatted.startsWith('<p>')) {
+                formatted = '<p>' + formatted + '</p>';
+            }
+            
+            // Clean up HTML structure
+            formatted = formatted
+                .replace(/<p><\/p>/g, '')
+                .replace(/<p><br>/g, '<p>')
+                .replace(/<br><\/p>/g, '</p>')
+                .replace(/<p><p>/g, '<p>')
+                .replace(/<\/p><\/p>/g, '</p>');
+            
+            return formatted;
+        }
+        
+        // Helper function to get score label
+        function getScoreLabel(score) {
+            if (score >= 90) return 'Excellent Match';
+            if (score >= 80) return 'Great Match';
+            if (score >= 70) return 'Good Match';
+            if (score >= 60) return 'Fair Match';
+            if (score >= 50) return 'Possible Match';
+            return 'Low Match';
         }
 
         function exportJobs() {

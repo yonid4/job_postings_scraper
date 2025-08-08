@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     salary_min INTEGER,
     salary_max INTEGER,
     salary_currency TEXT DEFAULT 'USD'::text,
+    score_threshold INTEGER DEFAULT 70,
+    job_limit INTEGER DEFAULT 25,
     profile_completed BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -32,6 +34,12 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     ),
     CONSTRAINT valid_work_arrangement_preference CHECK (
         work_arrangement_preference IN ('any', 'remote', 'hybrid', 'onsite')
+    ),
+    CONSTRAINT valid_score_threshold CHECK (
+        score_threshold IS NULL OR (score_threshold >= 0 AND score_threshold <= 100)
+    ),
+    CONSTRAINT valid_job_limit CHECK (
+        job_limit IS NULL OR (job_limit >= 1 AND job_limit <= 100)
     )
 );
 
@@ -40,6 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_profile_completed ON user_profiles(profile_completed);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_experience_level ON user_profiles(experience_level);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_work_arrangement ON user_profiles(work_arrangement_preference);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_score_threshold ON user_profiles(score_threshold);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_job_limit ON user_profiles(job_limit);
 
 -- Enable Row Level Security
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -80,4 +90,6 @@ GRANT ALL ON user_profiles TO authenticated;
 COMMENT ON TABLE user_profiles IS 'User profile information including skills, experience, and job preferences';
 COMMENT ON COLUMN user_profiles.skills_technologies IS 'Array of user skills and technologies';
 COMMENT ON COLUMN user_profiles.preferred_locations IS 'Array of preferred work locations';
+COMMENT ON COLUMN user_profiles.score_threshold IS 'Minimum AI qualification score (0-100) for job recommendations';
+COMMENT ON COLUMN user_profiles.job_limit IS 'Maximum number of jobs to process/display per search session (1-100)';
 COMMENT ON COLUMN user_profiles.profile_completed IS 'Boolean flag indicating if profile setup is complete';
