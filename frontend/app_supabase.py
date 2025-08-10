@@ -55,7 +55,7 @@ from src.auth.template_context import register_template_context_processors
 from src.auth.auth_context import login_required, email_verified_required, get_user_profile
 
 # Import profile routes
-from profile_routes import profile_bp
+# Profile routes are now handled directly in this file
 
 # Import emergency performance modules
 from src.debug.performance_profiler import emergency_profiler
@@ -313,9 +313,6 @@ def allowed_file(filename):
 # Register authentication blueprint
 from auth_routes import auth_bp
 app.register_blueprint(auth_bp)
-
-# Register profile blueprint
-app.register_blueprint(profile_bp, url_prefix='/profile')
 
 # Register resume blueprint
 from resume_routes import resume_bp

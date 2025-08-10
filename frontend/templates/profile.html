@@ -147,6 +147,40 @@
     </div>
 
     <div class="col-lg-4">
+        <!-- Change Password Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-lock me-2"></i>Change Password</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.change_password') }}" id="passwordForm">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" 
+                               minlength="6" required>
+                        <div class="form-text">Password must be at least 6 characters long.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirm_new_password" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirm_new_password" name="confirm_password" 
+                               minlength="6" required>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning btn-sm">
+                            <i class="fas fa-key me-1"></i>Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Profile Completion Guide -->
         <div class="card mb-4">
             <div class="card-header">
@@ -164,6 +198,35 @@
                 <div class="alert alert-info small">
                     <i class="fas fa-lightbulb me-1"></i>
                     <strong>Tip:</strong> The more complete your profile, the better job recommendations you'll receive.
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Account Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <p class="small"><strong>Email:</strong> {{ user.email if user else 'N/A' }}</p>
+                        <p class="small"><strong>Email Verified:</strong> 
+                            <span class="badge bg-{{ 'success' if user and user.email_confirmed else 'warning' }}">
+                                {{ 'Yes' if user and user.email_confirmed else 'No' }}
+                            </span>
+                        </p>
+                        <p class="small"><strong>Member Since:</strong> {{ user.created_at if user else 'N/A' }}</p>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm me-2">
+                        <i class="fas fa-home me-1"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </a>
                 </div>
             </div>
         </div>
@@ -286,5 +349,61 @@ function showError(message) {
     const modal = new bootstrap.Modal(document.getElementById('errorModal'));
     modal.show();
 }
+
+// Password form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordForm = document.getElementById('passwordForm');
+    const newPassword = document.getElementById('new_password');
+    const confirmNewPassword = document.getElementById('confirm_new_password');
+    
+    if (passwordForm && newPassword && confirmNewPassword) {
+        // Password confirmation validation
+        function validatePassword() {
+            if (newPassword.value !== confirmNewPassword.value) {
+                confirmNewPassword.setCustomValidity('Passwords do not match');
+            } else {
+                confirmNewPassword.setCustomValidity('');
+            }
+        }
+        
+        newPassword.addEventListener('change', validatePassword);
+        confirmNewPassword.addEventListener('keyup', validatePassword);
+        
+        // Password form validation
+        passwordForm.addEventListener('submit', function(e) {
+            const currentPassword = document.getElementById('current_password').value;
+            const newPasswordValue = newPassword.value;
+            const confirmNewPasswordValue = confirmNewPassword.value;
+            
+            if (!currentPassword) {
+                e.preventDefault();
+                alert('Please enter your current password.');
+                document.getElementById('current_password').focus();
+                return false;
+            }
+            
+            if (!newPasswordValue) {
+                e.preventDefault();
+                alert('Please enter a new password.');
+                newPassword.focus();
+                return false;
+            }
+            
+            if (newPasswordValue.length < 6) {
+                e.preventDefault();
+                alert('New password must be at least 6 characters long.');
+                newPassword.focus();
+                return false;
+            }
+            
+            if (newPasswordValue !== confirmNewPasswordValue) {
+                e.preventDefault();
+                alert('New passwords do not match.');
+                confirmNewPassword.focus();
+                return false;
+            }
+        });
+    }
+});
 </script>
 {% endblock %} 

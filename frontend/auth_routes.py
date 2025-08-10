@@ -343,78 +343,10 @@ def reset_password(token):
 @login_required
 def profile():
     """
-    User profile route.
-    
-    GET: Display profile form
-    POST: Update profile
+    User profile route - redirects to main profile page.
     """
-    if request.method == 'GET':
-        # Get current user data
-        auth_manager = get_auth_manager()
-        user = None
-        if auth_manager:
-            user = auth_manager.get_current_user()
-        
-        return render_template('auth/profile.html', user=user)
-    
-    # Handle POST request
-    try:
-        full_name = request.form.get('full_name', '').strip()
-        experience_level = request.form.get('experience_level', '').strip()
-        education_level = request.form.get('education_level', '').strip()
-        work_arrangement = request.form.get('work_arrangement', '').strip()
-        linkedin_credentials = request.form.get('linkedin_credentials', '').strip()
-        
-        if not full_name:
-            flash("Full name is required.", "error")
-            return render_template('auth/profile.html')
-        
-        if not experience_level:
-            flash("Experience level is required.", "error")
-            return render_template('auth/profile.html')
-        
-        if not education_level:
-            flash("Education level is required.", "error")
-            return render_template('auth/profile.html')
-        
-        if not work_arrangement:
-            flash("Work arrangement preference is required.", "error")
-            return render_template('auth/profile.html')
-        
-        # Get auth manager
-        auth_manager = get_auth_manager()
-        if not auth_manager:
-            flash("Authentication system not available.", "error")
-            return render_template('auth/profile.html')
-        
-        # Prepare profile data
-        profile_data = {
-            'full_name': full_name,
-            'experience_level': experience_level,
-            'education_level': education_level,
-            'work_arrangement': work_arrangement,
-            'linkedin_credentials': linkedin_credentials
-        }
-        
-        # Update profile
-        success, message = auth_manager.update_profile(profile_data)
-        
-        if success:
-            flash("Profile updated successfully!", "success")
-        else:
-            flash(f"Profile update failed: {message}", "error")
-        
-        # Get updated user data
-        user = auth_manager.get_current_user() if auth_manager else None
-        return render_template('auth/profile.html', user=user)
-        
-    except Exception as e:
-        logger.error(f"Profile update error: {e}")
-        flash("An unexpected error occurred.", "error")
-        # Get current user data for template
-        auth_manager = get_auth_manager()
-        user = auth_manager.get_current_user() if auth_manager else None
-        return render_template('auth/profile.html', user=user)
+    # Redirect to main profile page instead of showing auth-specific profile
+    return redirect(url_for('profile'))
 
 
 @auth_bp.route('/change-password', methods=['POST'])
