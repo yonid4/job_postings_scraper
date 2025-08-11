@@ -55,16 +55,25 @@ autoApply-bot/
 │   ├── 📁 debug/             # Performance monitoring
 │   │   └── performance_profiler.py
 │   └── __init__.py
-├── 📁 frontend/              # Web application interface
-│   ├── 📁 templates/         # HTML templates
-│   ├── 📁 config/            # Frontend configuration
-│   ├── 📁 data/              # Frontend data storage
-│   ├── 📁 uploads/           # File uploads (resumes, etc.)
-│   ├── app_supabase.py       # Main Flask application
-│   ├── auth_routes.py        # Authentication routes
-│   ├── profile_routes.py     # Profile management routes
-│   ├── resume_routes.py      # Resume processing routes
-│   └── run.py                # Frontend runner
+├── 📁 frontend-react/        # Modern React web application
+│   ├── 📁 app/               # Next.js App Router pages
+│   │   ├── 📁 auth/          # Authentication pages (login, register)
+│   │   ├── 📁 jobs/          # Job detail and management pages
+│   │   ├── 📁 search/        # Job search interface
+│   │   ├── 📁 tracker/       # Job tracking dashboard
+│   │   ├── 📁 profile/       # User profile management
+│   │   └── 📁 settings/      # Application settings
+│   ├── 📁 components/        # Reusable React components
+│   │   ├── 📁 ui/            # Base UI components (Radix UI + Tailwind)
+│   │   ├── 📁 search/        # Search-specific components
+│   │   ├── 📁 tracker/       # Job tracker components
+│   │   ├── 📁 profile/       # Profile management components
+│   │   └── 📁 job-detail/    # Job detail view components
+│   ├── 📁 hooks/             # Custom React hooks
+│   ├── 📁 lib/               # Utility libraries and configurations
+│   ├── package.json          # Node.js dependencies
+│   ├── next.config.ts        # Next.js configuration
+│   └── tailwind.config.ts    # Tailwind CSS configuration
 ├── 📁 tests/                 # Comprehensive test suites
 │   ├── test_*.py             # Unit and integration tests
 │   └── README.md             # Test documentation
@@ -78,12 +87,12 @@ autoApply-bot/
 │   └── ACTIVE_CONTEXT.md     # Current development context
 ├── 📁 logs/                  # Application logs
 ├── 📁 sessions/              # Browser session data
-├── 📁 flask_session/         # Web session data
+├── 📁 flask_session/         # Legacy Flask session data (to be removed)
 ├── 📁 examples/              # Usage examples
 ├── main.py                   # Main application entry point
 ├── requirements.txt          # Python dependencies
 ├── env.template              # Environment variables template
-├── package.json              # Node.js dependencies (if any)
+├── package.json              # Legacy Node.js dependencies
 ├── .gitignore               # Git ignore rules
 └── README.md                # This file
 ```
@@ -154,12 +163,18 @@ nano .env
 
 #### Web Interface (Recommended)
 ```bash
-# Start the Flask web interface
-cd frontend
-python run.py
+# Start the Next.js web application
+cd frontend-react
 
-# Or run directly
-python app_supabase.py
+# Install dependencies (first time only)
+npm install
+
+# Start development server
+npm run dev
+
+# Or build for production
+npm run build
+npm start
 ```
 
 #### Command Line Interface
@@ -256,13 +271,15 @@ python -m pytest tests/test_*filter*.py
 - **Search History**: Track and analyze job search patterns
 - **Job Favorites**: Save and manage favorite job listings
 
-### **Web Interface**
-- **Modern Flask Application**: Production-ready web interface with responsive design for all devices
+### **Modern Web Interface**
+- **React/Next.js Application**: Modern, responsive web interface built with React 19 and Next.js 15
+- **TypeScript Architecture**: Type-safe development with comprehensive component library
+- **Advanced UI Components**: Professional interface using Radix UI and Tailwind CSS
 - **Comprehensive Job Management**: View, analyze, track, and organize job applications with advanced filtering
 - **Professional Dashboard**: Complete profile management with resume uploads and skill tracking
 - **AI Results Visualization**: Clear presentation of qualification scores and detailed reasoning
 - **Secure Authentication**: Supabase-based login/registration with email verification and session management
-- **Emergency Performance**: Ultra-fast <2 second page loading with aggressive caching and optimization
+- **Real-time Performance**: Server-side rendering with optimized client-side navigation
 - **Real-time Synchronization**: Live data updates across sessions with cloud storage integration
 
 ### **Emergency Performance Optimization**
@@ -302,7 +319,7 @@ python -m pytest tests/test_*filter*.py
 - **✅ Enhanced Scraping**: LinkedIn scraper with CAPTCHA handling and anti-detection
 - **✅ Resume Processing**: AI-powered skill extraction and experience analysis
 - **✅ Application Tracking**: Professional lifecycle management with analytics
-- **✅ Web Interface**: Modern Flask application with responsive design
+- **✅ Web Interface**: Modern React/Next.js application with responsive design
 - **✅ Emergency Performance**: Ultra-fast optimization with comprehensive caching
 
 ### **Security & Compliance**
@@ -326,8 +343,7 @@ GEMINI_API_KEY=your_gemini_api_key
 
 
 
-# Flask Configuration
-FLASK_SECRET_KEY=your-secret-key-change-this
+# Next.js Configuration (handled automatically)
 
 # Testing Mode (Development)
 TESTING_MODE=true
@@ -432,6 +448,7 @@ MAX_APPLICATIONS_PER_SESSION=5
 
 ### **System Requirements**
 - Python 3.9+
+- Node.js 18+ and npm (for React frontend)
 - Chrome browser (for scraping)
 - Stable internet connection
 - Valid API credentials (Gemini, Supabase)
@@ -489,14 +506,23 @@ MAX_APPLICATIONS_PER_SESSION=5
 
 ### **Development Setup**
 ```bash
-# Install development dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
+# Install Node.js dependencies for frontend
+cd frontend-react
+npm install
+
 # Run comprehensive code quality checks
-black src/ tests/              # Code formatting
-flake8 src/ tests/             # Linting
-mypy src/                      # Type checking
-python -m pytest tests/       # Run 35+ test suite
+black src/ tests/              # Python code formatting
+flake8 src/ tests/             # Python linting
+mypy src/                      # Python type checking
+python -m pytest tests/       # Run 35+ Python test suite
+
+# Frontend development commands
+npm run dev                    # Start development server
+npm run build                  # Build for production
+npm run lint                   # TypeScript/React linting
 ```
 
 ## 📄 License

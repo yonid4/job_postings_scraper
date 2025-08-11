@@ -185,6 +185,14 @@ def perform_enhanced_job_evaluation(qualification_analyzer, evaluation_job_data,
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-change-this')
 
+# Configure CORS for React frontend
+from flask_cors import CORS
+CORS(app, 
+     origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+
 # Initialize emergency cache
 cache = Cache(config={'CACHE_TYPE': 'simple'})
 cache.init_app(app)
@@ -3106,7 +3114,341 @@ def calculate_comprehensive_analytics(db_manager, user_id):
         }
 
 
+# Debug endpoint to test basic API connectivity (no auth required)
+@app.route('/api/debug/ping', methods=['GET'])
+def api_debug_ping():
+    """Simple ping endpoint to test if API routes are working."""
+    return jsonify({
+        'success': True,
+        'message': 'API is working',
+        'timestamp': datetime.now().isoformat()
+    })
+
+# Debug endpoint to test database connectivity
+@app.route('/api/debug/test', methods=['GET'])
+@login_required
+def api_debug_test():
+    """Simple debug endpoint to test database connectivity."""
+    try:
+        user = get_current_user()
+        user_id = session.get('user_id')
+        db_manager = get_authenticated_db_manager()
+        
+        debug_info = {
+            'success': True,
+            'user_authenticated': bool(user),
+            'user_id': user_id,
+            'db_manager_available': bool(db_manager),
+            'session_keys': list(session.keys()) if session else [],
+        }
+        
+        if db_manager and user_id:
+            try:
+                jobs_count = len(db_manager.get_all_jobs(user_id))
+                apps_count = len(db_manager.get_applications_by_user(user_id))
+                favs_count = len(db_manager.favorites.get_user_favorites(user_id))
+                
+                debug_info.update({
+                    'database_working': True,
+                    'jobs_count': jobs_count,
+                    'applications_count': apps_count,
+                    'favorites_count': favs_count,
+                })
+            except Exception as db_error:
+                debug_info.update({
+                    'database_working': False,
+                    'database_error': str(db_error),
+                })
+        
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'debug': 'Exception in debug endpoint'
+        })
+
 # Enhanced API endpoints for the job tracker
+@app.route('/api/jobs/tracker', methods=['GET'])
+@login_required
+def api_jobs_tracker():
+    """API endpoint to get job tracker data as JSON."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        # Get authenticated database manager
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+
+        logger.info(f"API: Starting jobs_tracker API for user {user_id}")
+        
+        # Use the same logic as the working jobs_tracker route
+        try:
+            logger.info("API: Attempting to use SupabaseManager methods...")
+            jobs_data_raw = db_manager.get_all_jobs(user_id)
+            applications_data_raw = db_manager.get_applications_by_user(user_id)
+            
+            logger.info(f"API: New methods successful: {len(jobs_data_raw)} jobs, {len(applications_data_raw)} applications")
+            
+        except Exception as method_error:
+            logger.warning(f"API: New methods failed: {str(method_error)}")
+            # Fallback to older method
+            try:
+                logger.info("API: Falling back to get_enhanced_jobs_data...")
+                jobs_data_raw = get_enhanced_jobs_data(db_manager, user_id, {})
+                applications_data_raw = []  # Will be empty in fallback
+                logger.info(f"API: Fallback successful: {len(jobs_data_raw)} jobs")
+            except Exception as fallback_error:
+                logger.error(f"API: Both methods failed: {str(fallback_error)}")
+                return jsonify({'success': False, 'error': 'Failed to load job data'})
+        
+        # Get favorites data
+        try:
+            favorites_data_raw = db_manager.favorites.get_user_favorites(user_id)
+            logger.info(f"API: Got {len(favorites_data_raw)} favorites")
+        except Exception as fav_error:
+            logger.warning(f"API: Failed to get favorites: {str(fav_error)}")
+            favorites_data_raw = []
+        
+        # Process applications lookup - handle both job_id and id fields
+        applications_lookup = {}
+        for app in applications_data_raw:
+            job_id = app.get('job_id') or app.get('id')
+            if job_id:
+                applications_lookup[job_id] = app
+        
+        # Process favorites lookup
+        favorites_lookup = {}
+        for fav in favorites_data_raw:
+            if hasattr(fav, 'job_id'):
+                favorites_lookup[fav.job_id] = fav.__dict__
+            elif isinstance(fav, dict):
+                job_id = fav.get('job_id')
+                if job_id:
+                    favorites_lookup[job_id] = fav
+        
+        # Process jobs - use the same logic as the working route
+        jobs_data = []
+        processed_jobs = 0
+        
+        for job in jobs_data_raw:
+            try:
+                job_dict = dict(job) if hasattr(job, 'items') else job
+                
+                # Try different possible field names for job_id
+                job_id = job_dict.get('job_id') or job_dict.get('id')
+                
+                # Skip jobs without a valid job_id
+                if not job_id:
+                    logger.warning(f"API: Skipping job without valid ID: {job_dict}")
+                    continue
+                
+                # Get application data
+                application = applications_lookup.get(job_id, {})
+                
+                # Try different possible field names for other fields
+                job_title = job_dict.get('job_title') or job_dict.get('title', '')
+                company_name = job_dict.get('company_name') or job_dict.get('company', '')
+                location = job_dict.get('location', '')
+                job_description = job_dict.get('job_description') or job_dict.get('description', '')
+                salary_range = job_dict.get('salary_range', '')
+                date_found = job_dict.get('date_found', '') or job_dict.get('date_created', '')
+                
+                # Get AI score with multiple field attempts
+                ai_score = (job_dict.get('gemini_score') or 
+                           job_dict.get('ai_score') or 
+                           job_dict.get('qualification_score') or 
+                           job_dict.get('score'))
+                
+                ai_evaluation = (job_dict.get('gemini_evaluation') or 
+                               job_dict.get('ai_evaluation') or 
+                               job_dict.get('evaluation', ''))
+                
+                # Get favorite data
+                favorite = favorites_lookup.get(job_id, {})
+                is_favorited = bool(favorite)
+                priority = favorite.get('priority', 'Medium') if favorite else 'Medium'
+                
+                # Get source URL
+                source_url = (job_dict.get('linkedin_url') or 
+                             job_dict.get('job_url') or 
+                             job_dict.get('url') or 
+                             job_dict.get('source', ''))
+                
+                processed_job = {
+                    'id': job_id,
+                    'job': {
+                        'job_title': job_title,
+                        'company_name': company_name,
+                        'location': location,
+                        'salary_range': salary_range,
+                        'job_description': job_description,
+                        'linkedin_url': source_url,
+                        'date_found': date_found,
+                        'gemini_score': ai_score,
+                        'gemini_evaluation': ai_evaluation,
+                    },
+                    'has_applied': bool(application),
+                    'is_favorited': is_favorited,
+                    'notes': application.get('notes', '') if application else '',
+                    'priority': priority,
+                    'source': source_url,
+                    'date_applied': application.get('applied_date') if application else None,
+                    'application_status': application.get('status') if application else None,
+                }
+                
+                jobs_data.append(processed_job)
+                processed_jobs += 1
+                
+            except Exception as job_error:
+                logger.warning(f"API: Error processing job {job.get('id', 'unknown')}: {str(job_error)}")
+                continue
+        
+        logger.info(f"API: Successfully processed {processed_jobs} jobs")
+        
+        return jsonify({
+            'success': True,
+            'jobs': jobs_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_jobs_tracker: {str(e)}")
+        logger.exception("API: Full traceback:")
+        return jsonify({'success': False, 'error': 'Failed to load job data'})
+
+@app.route('/api/jobs/analytics', methods=['GET'])
+@login_required
+def api_jobs_analytics():
+    """API endpoint to get job analytics data as JSON."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        # Get authenticated database manager
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+
+        # Calculate analytics using existing function
+        analytics = calculate_comprehensive_analytics(db_manager, user_id)
+        
+        return jsonify({
+            'success': True,
+            **analytics
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_jobs_analytics: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to load analytics',
+            'total_jobs_tracked': 0,
+            'applications_submitted': 0,
+            'response_rate': 0,
+            'responses_received': 0,
+            'interviews_scheduled': 0,
+            'offers_received': 0,
+            'avg_qualification_score': 0,
+            'jobs_this_week': 0,
+        })
+
+@app.route('/api/jobs/apply', methods=['POST'])
+@login_required
+def api_mark_as_applied():
+    """API endpoint to mark a job as applied."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        data = request.get_json()
+        job_id = data.get('job_id')
+        applied_date = data.get('applied_date')
+        application_method = data.get('application_method', 'manual')
+        notes = data.get('notes', '')
+        
+        if not job_id:
+            return jsonify({'success': False, 'error': 'Job ID is required'})
+        
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        user_id = session.get('user_id')
+        
+        # Check if application already exists
+        existing_application = db_manager.applications.get_application_by_job(user_id, job_id)
+        if existing_application:
+            return jsonify({'success': False, 'error': 'Job already marked as applied'})
+        
+        # Create new application
+        application_data = {
+            'user_id': user_id,
+            'job_id': job_id,
+            'applied_date': applied_date or datetime.now().strftime('%Y-%m-%d'),
+            'application_method': application_method,
+            'status': 'applied',
+            'notes': notes,
+            'created_date': datetime.now().isoformat()
+        }
+        
+        result = db_manager.applications.create_application(application_data)
+        
+        if result:
+            return jsonify({'success': True, 'message': 'Job marked as applied successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to create application record'})
+        
+    except Exception as e:
+        logger.error(f"Error in api_mark_as_applied: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to mark job as applied'})
+
+@app.route('/api/jobs/favorite', methods=['POST'])
+@login_required
+def api_toggle_favorite():
+    """API endpoint to toggle job favorite status."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        data = request.get_json()
+        job_id = data.get('job_id')
+        
+        if not job_id:
+            return jsonify({'success': False, 'error': 'Job ID is required'})
+        
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        user_id = session.get('user_id')
+        
+        # Toggle favorite status
+        result = db_manager.jobs.toggle_favorite(user_id, job_id)
+        
+        if result:
+            return jsonify({'success': True, 'message': 'Favorite status updated successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to update favorite status'})
+        
+    except Exception as e:
+        logger.error(f"Error in api_toggle_favorite: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to update favorite status'})
+
 @app.route('/api/jobs/status-update', methods=['POST'])
 @login_required
 def update_job_status():
@@ -3322,6 +3664,243 @@ def get_days_since_applied(applied_date):
     except Exception as e:
         logger.error(f"Error calculating days since applied: {e}")
         return 'Unknown'
+
+
+# API endpoints for profile data
+@app.route('/api/profile', methods=['GET'])
+@login_required
+def api_get_profile():
+    """Get user profile data as JSON."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID not found'})
+        
+        # Get authenticated database manager
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        # Load user profile data from database
+        profile_data = db_manager.profiles.get_profile(user_id)
+        
+        if profile_data:
+            # Convert profile data to the format expected by React
+            profile_response = {
+                'yearsOfExperience': profile_data.years_of_experience,
+                'experienceLevel': profile_data.experience_level.value if profile_data.experience_level else '',
+                'educationLevel': profile_data.education_level.value if profile_data.education_level else '',
+                'fieldOfStudy': profile_data.field_of_study or '',
+                'skillsTechnologies': profile_data.skills_technologies or [],
+                'workArrangementPreference': profile_data.work_arrangement_preference.value if profile_data.work_arrangement_preference else '',
+                'preferredLocations': profile_data.preferred_locations or [],
+                'salaryMin': profile_data.salary_min,
+                'salaryMax': profile_data.salary_max,
+            }
+        else:
+            # Return empty profile if none exists
+            profile_response = {
+                'yearsOfExperience': None,
+                'experienceLevel': '',
+                'educationLevel': '',
+                'fieldOfStudy': '',
+                'skillsTechnologies': [],
+                'workArrangementPreference': '',
+                'preferredLocations': [],
+                'salaryMin': None,
+                'salaryMax': None,
+            }
+        
+        return jsonify({
+            'success': True,
+            'profile': profile_response
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting profile data: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': 'An error occurred'}), 500
+
+
+@app.route('/api/profile', methods=['POST'])
+@login_required
+def api_update_profile():
+    """Update user profile data via API."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID not found'})
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Get authenticated database manager
+        db_manager = get_authenticated_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        # Validate required fields
+        required_fields = ['experienceLevel', 'educationLevel', 'workArrangementPreference']
+        missing_fields = []
+        for field in required_fields:
+            if not data.get(field):
+                missing_fields.append(field)
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        if not data.get('skillsTechnologies') or len(data.get('skillsTechnologies', [])) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Please enter your skills and technologies'
+            }), 400
+        
+        # Prepare profile data for database
+        profile_update_data = {
+            'years_of_experience': data.get('yearsOfExperience', 0),
+            'experience_level': data.get('experienceLevel', ''),
+            'education_level': data.get('educationLevel', ''),
+            'field_of_study': data.get('fieldOfStudy', ''),
+            'skills_technologies': data.get('skillsTechnologies', []),
+            'work_arrangement_preference': data.get('workArrangementPreference', ''),
+            'preferred_locations': data.get('preferredLocations', []),
+            'salary_min': data.get('salaryMin'),
+            'salary_max': data.get('salaryMax'),
+        }
+        
+        # Update profile in database
+        success = db_manager.profiles.upsert_profile(user_id, profile_update_data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Profile updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to update profile'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': 'An error occurred'}), 500
+
+
+# API endpoints for resume management
+@app.route('/resume/upload', methods=['POST'])
+@login_required
+def api_upload_resume():
+    """Upload resume file."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID not found'})
+        
+        # Check if file was uploaded
+        if 'resume' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+        
+        file = request.files['resume']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'.pdf', '.docx'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'Invalid file type. Please upload PDF or DOCX files only.'}), 400
+        
+        # Validate file size (10MB limit)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if file_size > 10 * 1024 * 1024:  # 10MB
+            return jsonify({'success': False, 'error': 'File size must be less than 10MB'}), 400
+        
+        # Use resume manager to handle upload
+        resume_manager = app.config.get('resume_manager')
+        if not resume_manager:
+            return jsonify({'success': False, 'error': 'Resume manager not available'}), 500
+        
+        # Save file
+        success = resume_manager.save_resume(user_id, file)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Resume uploaded successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to upload resume'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error uploading resume: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': 'An error occurred'}), 500
+
+
+@app.route('/resume/delete', methods=['DELETE'])
+@login_required
+def api_delete_resume():
+    """Delete user's resume."""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not authenticated'})
+        
+        user_id = user.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID not found'})
+        
+        # Use resume manager to handle deletion
+        resume_manager = app.config.get('resume_manager')
+        if not resume_manager:
+            return jsonify({'success': False, 'error': 'Resume manager not available'}), 500
+        
+        # Delete resume
+        success = resume_manager.delete_resume(user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Resume deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to delete resume'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting resume: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': 'An error occurred'}), 500
 
 
 if __name__ == '__main__':

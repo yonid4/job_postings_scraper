@@ -37,6 +37,7 @@ mypy==1.8.0
 # Web framework for frontend
 flask==3.0.2
 flask-session==0.6.0
+flask-cors==4.0.0
 
 # Resume processing dependencies
 PyPDF2==3.0.1
