@@ -27,6 +27,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.11.17",
+    "lib-utils-ts": "^0.0.0-test",
     "lucide-react": "^0.456.0",
     "next": "15.4.6",
     "react": "^19",
