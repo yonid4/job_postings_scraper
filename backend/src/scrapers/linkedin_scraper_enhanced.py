@@ -29,12 +29,12 @@ from selenium.common.exceptions import (
 )
 from urllib.parse import quote
 
-from src.scrapers.base_scraper import BaseScraper, ScrapingResult
-from src.scrapers.base_scraper import ScrapingConfig
-from src.utils.session_manager import SessionManager
-from src.utils.logger import JobAutomationLogger
-from src.utils.captcha_handler import captcha_handler
-from src.data.models import JobListing
+from backend.src.scrapers.base_scraper import BaseScraper, ScrapingResult
+from backend.src.scrapers.base_scraper import ScrapingConfig
+from backend.src.utils.session_manager import SessionManager
+from backend.src.utils.logger import JobAutomationLogger
+from backend.src.utils.captcha_handler import captcha_handler
+from backend.src.data.models import JobListing
 
 
 class EnhancedLinkedInScraper(BaseScraper):
@@ -4354,7 +4354,7 @@ def create_enhanced_linkedin_scraper(username: str, password: str, use_persisten
     Returns:
         Configured EnhancedLinkedInScraper instance
     """
-    from src.config.config_manager import ConfigurationManager
+    from backend.src.config.config_manager import ConfigurationManager
     
     # Get configuration
     config_manager = ConfigurationManager()

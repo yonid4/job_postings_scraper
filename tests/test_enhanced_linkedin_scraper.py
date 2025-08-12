@@ -13,10 +13,10 @@ import os
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.base_scraper import ScrapingConfig
-from src.config.config_manager import ConfigurationManager
+from backend.src.utils.session_manager import SessionManager
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.scrapers.base_scraper import ScrapingConfig
+from backend.src.config.config_manager import ConfigurationManager
 
 def test_session_management():
     """Test session management functionality."""

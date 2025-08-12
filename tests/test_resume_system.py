@@ -15,9 +15,9 @@ from pathlib import Path
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from src.data.resume_processor import ResumeProcessor
-from src.data.resume_manager import ResumeManager
-from src.utils.logger import JobAutomationLogger
+from backend.src.data.resume_processor import ResumeProcessor
+from backend.src.data.resume_manager import ResumeManager
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 

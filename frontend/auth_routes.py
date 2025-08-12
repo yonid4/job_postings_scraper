@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.auth.flask_integration import get_auth_manager, get_db_manager, login_required, get_current_user
-from src.data.supabase_manager import User
+from backend.src.auth.flask_integration import get_auth_manager, get_db_manager, login_required, get_current_user
+from backend.src.data.supabase_manager import User
 
 logger = logging.getLogger(__name__)
 

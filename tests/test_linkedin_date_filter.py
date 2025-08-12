@@ -24,9 +24,9 @@ def test_linkedin_date_filter():
     
     try:
         # Import required modules
-        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper, ScrapingConfig
-        from src.config.config_manager import ConfigurationManager
-        from src.utils.logger import JobAutomationLogger
+        from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper, ScrapingConfig
+        from backend.src.config.config_manager import ConfigurationManager
+        from backend.src.utils.logger import JobAutomationLogger
         
         print("✓ Successfully imported required modules")
         
@@ -185,7 +185,7 @@ def test_configuration():
     print("\n=== Configuration Test ===")
     
     try:
-        from src.config.config_manager import ConfigurationManager, LinkedInSettings
+        from backend.src.config.config_manager import ConfigurationManager, LinkedInSettings
         
         # Initialize config manager
         config_manager = ConfigurationManager()

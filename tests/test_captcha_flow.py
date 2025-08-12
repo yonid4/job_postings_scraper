@@ -8,9 +8,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.utils.session_manager import SessionManager
-from src.config.config_manager import ConfigurationManager
-from src.utils.logger import JobAutomationLogger
+from backend.src.utils.session_manager import SessionManager
+from backend.src.config.config_manager import ConfigurationManager
+from backend.src.utils.logger import JobAutomationLogger
 
 def test_captcha_flow():
     """Test the CAPTCHA handling flow."""
@@ -68,9 +68,9 @@ def test_captcha_flow():
         
     finally:
         # Keep the browser open for manual inspection
-        print("\nTest completed. Browser will remain open for manual inspection.")
-        print("Press Enter to close the browser...")
-        input()
+        print("\nTest completed. Browser would remain open for manual inspection in interactive mode.")
+        print("Skipping browser close prompt for automated testing...")
+        # input()  # Disabled for pytest
 
 if __name__ == "__main__":
     test_captcha_flow() 

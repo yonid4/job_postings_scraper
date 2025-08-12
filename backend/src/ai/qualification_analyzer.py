@@ -857,6 +857,7 @@ class QualificationAnalyzer:
         """
         job_id = job.get('id', '')
         job_title = job.get('title', 'Unknown')
+        last_error = None
         
         logger.info(f"🔍 Starting job evaluation for: {job_title} (ID: {job_id})")
         
@@ -900,6 +901,7 @@ class QualificationAnalyzer:
                 )
                 
             except Exception as e:
+                last_error = e
                 error_msg = f"Job evaluation failed on attempt {attempt + 1}: {e}"
                 logger.warning(f"⚠️ {error_msg} for job: {job_title}")
                 
@@ -916,7 +918,7 @@ class QualificationAnalyzer:
             success=False,
             qualification_result=None,
             attempts=max_retries + 1,
-            error_message=f"All {max_retries + 1} attempts failed: {str(e)}",
+            error_message=f"All {max_retries + 1} attempts failed: {str(last_error) if last_error else 'Unknown error'}",
             job_id=job_id,
             job_title=job_title
         )

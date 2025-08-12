@@ -11,9 +11,9 @@ from unittest.mock import Mock, patch, MagicMock
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.base_scraper import ScrapingConfig
-from src.data.models import JobListing
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.scrapers.base_scraper import ScrapingConfig
+from backend.src.data.models import JobListing
 
 
 class TestNewLinkedInFeatures(unittest.TestCase):

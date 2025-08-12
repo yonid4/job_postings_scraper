@@ -5,9 +5,10 @@ This file demonstrates how to implement your own analysis logic
 instead of relying on the default AI-based approach.
 """
 
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
-from src.config.config_manager import UserProfile, AISettings
-from src.data.models import QualificationStatus
+from typing import Dict, List
+from backend.src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
+from backend.src.config.config_manager import UserProfile, AISettings
+from backend.src.data.models import QualificationStatus
 import re
 import time
 
@@ -43,14 +44,19 @@ class CustomRuleBasedAnalyzer(QualificationAnalyzer):
             return AnalysisResponse(
                 qualification_score=score,
                 qualification_status=self._score_to_status(score),
+                confidence_score=max(70, min(95, score + 10)),  # Confidence based on score
                 ai_reasoning=reasoning,
                 required_experience=required_experience,
                 education_requirements=education_requirements,
                 key_skills_mentioned=key_skills,
                 matching_strengths=matching_strengths,
                 potential_concerns=potential_concerns,
+                recommendations=self._generate_recommendations(request, score),
+                component_scores=self._calculate_component_scores(request),
+                requirements_met=self._calculate_requirements_met(request),
                 ai_model_used="custom_rule_based",
-                analysis_duration=analysis_duration
+                analysis_duration=analysis_duration,
+                scoring_method="profile_only"
             )
             
         except Exception as e:
@@ -58,14 +64,19 @@ class CustomRuleBasedAnalyzer(QualificationAnalyzer):
             return AnalysisResponse(
                 qualification_score=0,
                 qualification_status=QualificationStatus.NOT_QUALIFIED,
+                confidence_score=10,  # Low confidence due to error
                 ai_reasoning=f"Custom analysis failed: {str(e)}",
                 required_experience="",
                 education_requirements="",
                 key_skills_mentioned=[],
                 matching_strengths=[],
                 potential_concerns=[f"Analysis error: {str(e)}"],
+                recommendations=["Fix analysis configuration", "Check job description format"],
+                component_scores={},
+                requirements_met="Unable to determine due to analysis error",
                 ai_model_used="custom_rule_based",
-                analysis_duration=time.time() - start_time
+                analysis_duration=time.time() - start_time,
+                scoring_method="profile_only"
             )
     
     def _calculate_rule_based_score(self, request: AnalysisRequest) -> int:
@@ -337,6 +348,102 @@ class CustomRuleBasedAnalyzer(QualificationAnalyzer):
             concerns.append("Location may not be ideal")
         
         return concerns
+
+    def _generate_recommendations(self, request: AnalysisRequest, score: int) -> List[str]:
+        """Generate specific improvement recommendations based on analysis."""
+        recommendations = []
+        user_profile = request.user_profile
+        job_desc_lower = request.job_description.lower()
+        
+        # Experience-based recommendations
+        if user_profile.years_of_experience < 3:
+            recommendations.append("Consider highlighting any relevant internships or projects")
+            
+        # Skill-based recommendations  
+        job_skills = self._extract_skills(request.job_description)
+        user_skills = [skill.lower() for skill in user_profile.additional_skills]
+        missing_skills = [skill for skill in job_skills if skill.lower() not in user_skills]
+        
+        if missing_skills:
+            recommendations.append(f"Consider learning: {', '.join(missing_skills[:3])}")
+            
+        # Score-based recommendations
+        if score < 50:
+            recommendations.append("Consider applying to similar but entry-level positions")
+            recommendations.append("Focus on building relevant experience in this field")
+        elif score < 75:
+            recommendations.append("Highlight your most relevant experiences in your application")
+            recommendations.append("Consider obtaining relevant certifications")
+        else:
+            recommendations.append("Strong match - emphasize your key achievements")
+            
+        return recommendations[:5]  # Limit to 5 recommendations
+        
+    def _calculate_component_scores(self, request: AnalysisRequest) -> Dict[str, int]:
+        """Calculate detailed component scores for transparency."""
+        user_profile = request.user_profile
+        job_desc_lower = request.job_description.lower()
+        
+        # Experience score (0-30)
+        exp_score = min(30, user_profile.years_of_experience * 6)
+        
+        # Skills score (0-40)
+        skills_score = min(40, len(user_profile.additional_skills) * 5)
+        
+        # Education score (0-20)
+        education_score = 20 if user_profile.has_college_degree else 10
+        
+        # Location score (0-10)
+        location_score = 10
+        for location in user_profile.preferred_locations:
+            if location.lower() in job_desc_lower:
+                location_score = 10
+                break
+        else:
+            location_score = 5  # Partial score if no location match
+            
+        return {
+            "experience_match": exp_score,
+            "skills_alignment": skills_score, 
+            "education_fit": education_score,
+            "location_preference": location_score
+        }
+        
+    def _calculate_requirements_met(self, request: AnalysisRequest) -> str:
+        """Calculate how many job requirements are satisfied."""
+        user_profile = request.user_profile
+        job_desc_lower = request.job_description.lower()
+        
+        total_requirements = 0
+        met_requirements = 0
+        
+        # Check experience requirement
+        exp_required = self._extract_experience_requirements(request.job_description)
+        if exp_required:
+            total_requirements += 1
+            exp_years = int(re.search(r'(\d+)', exp_required).group(1)) if re.search(r'(\d+)', exp_required) else 0
+            if user_profile.years_of_experience >= exp_years:
+                met_requirements += 1
+                
+        # Check education requirement  
+        if "degree" in job_desc_lower or "bachelor" in job_desc_lower or "education" in job_desc_lower:
+            total_requirements += 1
+            if user_profile.has_college_degree:
+                met_requirements += 1
+                
+        # Check skills requirements
+        required_skills = self._extract_skills(request.job_description)
+        user_skills = [skill.lower() for skill in user_profile.additional_skills]
+        
+        for skill in required_skills:
+            total_requirements += 1
+            if skill.lower() in user_skills:
+                met_requirements += 1
+                
+        if total_requirements == 0:
+            return "Unable to determine requirements from job description"
+            
+        return f"{met_requirements} out of {total_requirements} key requirements satisfied"
 
 
 # Example usage

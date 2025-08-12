@@ -15,7 +15,7 @@ def test_enhanced_linkedin_scraper_import():
     print("�� EnhancedLinkedInScraper Import Test")
     
     try:
-        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+        from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
         print("✅ SUCCESS: EnhancedLinkedInScraper imported successfully")
     except ImportError as e:
         print(f"❌ FAIL: Failed to import EnhancedLinkedInScraper: {e}")
@@ -28,9 +28,9 @@ def test_enhanced_linkedin_scraper_instantiation():
     print("\n🧪 EnhancedLinkedInScraper Instantiation Test")
     
     try:
-        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-        from src.scrapers.base_scraper import ScrapingConfig
-        from src.utils.session_manager import SessionManager
+        from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+        from backend.src.scrapers.base_scraper import ScrapingConfig
+        from backend.src.utils.session_manager import SessionManager
         
         # Create test configuration
         config = ScrapingConfig(
@@ -72,7 +72,7 @@ def test_enhanced_linkedin_scraper_factory():
     print("\n🧪 EnhancedLinkedInScraper Factory Test")
     
     try:
-        from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+        from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
         
         # Test factory function
         scraper = create_enhanced_linkedin_scraper(
@@ -84,7 +84,7 @@ def test_enhanced_linkedin_scraper_factory():
         print("✅ SUCCESS: EnhancedLinkedInScraper created via factory function")
         
         # Verify it's the right type
-        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+        from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
         assert isinstance(scraper, EnhancedLinkedInScraper)
         print("✅ SUCCESS: Factory function returns correct type")
         
@@ -152,9 +152,9 @@ def test_filter_detection_logic():
             print("   ✅ Step 4: Custom filters detected - should use EnhancedLinkedInScraper")
             
             try:
-                from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-                from src.scrapers.base_scraper import ScrapingConfig
-                from src.utils.session_manager import SessionManager
+                from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+                from backend.src.scrapers.base_scraper import ScrapingConfig
+                from backend.src.utils.session_manager import SessionManager
                 
                 # Create config
                 config = ScrapingConfig(

@@ -25,9 +25,9 @@ try:
 except ImportError:
     # Fallback for src imports
     try:
-        from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-        from src.scrapers.base_scraper import ScrapingConfig
-        from src.utils.logger import JobAutomationLogger
+        from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+        from backend.src.scrapers.base_scraper import ScrapingConfig
+        from backend.src.utils.logger import JobAutomationLogger
     except ImportError:
         print("Error: Could not import required modules. Please ensure you're running from the project root.")
         sys.exit(1)

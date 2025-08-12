@@ -32,34 +32,34 @@ logger = logging.getLogger(__name__)
 parent_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from src.config.config_manager import ConfigurationManager, UserProfile, AISettings
-from src.utils.job_link_processor import JobLinkProcessor
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
-from src.data.models import QualificationResult, QualificationStatus, UserDecision
+from backend.src.config.config_manager import ConfigurationManager, UserProfile, AISettings
+from backend.src.utils.job_link_processor import JobLinkProcessor
+from backend.src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
+from backend.src.data.models import QualificationResult, QualificationStatus, UserDecision
 
-from src.data.resume_manager import ResumeManager
+from backend.src.data.resume_manager import ResumeManager
 
 
-from src.utils.logger import JobAutomationLogger
-from src.utils.captcha_handler import CAPTCHAStatus
+from backend.src.utils.logger import JobAutomationLogger
+from backend.src.utils.captcha_handler import CAPTCHAStatus
 
 # Supabase integration
-from src.auth.flask_integration import get_auth_manager, supabase_integration, get_current_user, get_user_id, get_db_manager, get_authenticated_db_manager
-from src.data.supabase_manager import Job as SupabaseJob, Application as SupabaseApplication, JobSearch, ApplicationStatus as SupabaseApplicationStatus, ApplicationMethod as SupabaseApplicationMethod
+from backend.src.auth.flask_integration import get_auth_manager, supabase_integration, get_current_user, get_user_id, get_db_manager, get_authenticated_db_manager
+from backend.src.data.supabase_manager import Job as SupabaseJob, Application as SupabaseApplication, JobSearch, ApplicationStatus as SupabaseApplicationStatus, ApplicationMethod as SupabaseApplicationMethod
 
 # New Supabase Auth integration
-from src.auth.auth_context import init_auth_context, get_auth_context
-from src.auth.template_context import register_template_context_processors
+from backend.src.auth.auth_context import init_auth_context, get_auth_context
+from backend.src.auth.template_context import register_template_context_processors
 
 # Import the new auth decorators
-from src.auth.auth_context import login_required, email_verified_required, get_user_profile
+from backend.src.auth.auth_context import login_required, email_verified_required, get_user_profile
 
 # Import profile routes
 # Profile routes are now handled directly in this file
 
 # Import emergency performance modules
-from src.debug.performance_profiler import emergency_profiler
-from src.data.emergency_queries import EmergencyJobQueries
+from backend.src.debug.performance_profiler import emergency_profiler
+from backend.src.data.emergency_queries import EmergencyJobQueries
 from flask_caching import Cache
 
 def create_enhanced_analysis_request(evaluation_job_data, user_profile_data, ai_settings, resume_data=None):
@@ -75,8 +75,8 @@ def create_enhanced_analysis_request(evaluation_job_data, user_profile_data, ai_
     Returns:
         AnalysisRequest with enhanced profile fields
     """
-    from src.ai.qualification_analyzer import AnalysisRequest
-    from src.config.config_manager import UserProfile
+    from backend.src.ai.qualification_analyzer import AnalysisRequest
+    from backend.src.config.config_manager import UserProfile
     
     # Create UserProfile object for backward compatibility
     user_profile = UserProfile(
@@ -127,7 +127,7 @@ def perform_enhanced_job_evaluation(qualification_analyzer, evaluation_job_data,
     Returns:
         JobEvaluationResult with enhanced scoring
     """
-    from src.ai.qualification_analyzer import JobEvaluationResult, DailyQuotaExhaustedException
+    from backend.src.ai.qualification_analyzer import JobEvaluationResult, DailyQuotaExhaustedException
     
     try:
         # Create enhanced analysis request
@@ -748,7 +748,7 @@ def analyze_jobs():
             return jsonify({'success': False, 'error': 'Please complete your profile before analyzing jobs'})
         
         # Create user profile object from database data
-        from src.config.config_manager import UserProfile, AISettings
+        from backend.src.config.config_manager import UserProfile, AISettings
         user_profile = UserProfile(
             years_of_experience=analysis_data.get('years_of_experience', 0),
             experience_level=analysis_data.get('experience_level', 'entry'),
@@ -769,7 +769,7 @@ def analyze_jobs():
             # Analyze job with AI
             if qualification_analyzer:
                 # Create analysis request
-                from src.ai.qualification_analyzer import AnalysisRequest
+                from backend.src.ai.qualification_analyzer import AnalysisRequest
                 request = AnalysisRequest(
                     job_title="Job Analysis",  # Will be updated with actual job data
                     company="Unknown Company",
@@ -879,7 +879,7 @@ def analyze_jobs():
 #         # Implement actual LinkedIn scraping
 #         try:
 #             # Initialize config manager first
-#             from src.config.config_manager import ConfigurationManager
+#             from backend.src.config.config_manager import ConfigurationManager
 #             config_manager = ConfigurationManager()
             
 #             # Get LinkedIn credentials from config
@@ -924,8 +924,8 @@ def analyze_jobs():
 #                 })
             
 #             # Import search strategy manager and CAPTCHA handler
-#             from src.utils.search_strategy_manager import search_strategy_manager
-#             from src.utils.captcha_handler import captcha_handler
+#             from backend.src.utils.search_strategy_manager import search_strategy_manager
+#             from backend.src.utils.captcha_handler import captcha_handler
             
 #             # Get additional filters from request
 #             date_posted = request.form.get('date_posted')
@@ -961,8 +961,8 @@ def analyze_jobs():
 #             # Choose appropriate scraper based on strategy
 #             if strategy_info['method'] == 'api_only':
 #                 # Use API-only scraper for basic searches
-#                 from src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
-#                 from src.scrapers.base_scraper import ScrapingConfig
+#                 from backend.src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
+#                 from backend.src.scrapers.base_scraper import ScrapingConfig
                 
 #                 # Create proper ScrapingConfig for API scraper
 #                 scraping_settings = config_manager.get_scraping_settings()
@@ -980,7 +980,7 @@ def analyze_jobs():
 #                 logger.info("Using API-only scraper for fast execution")
 #             else:
 #                 # Use WebDriver scraper for advanced searches
-#                 from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+#                 from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
                 
 #                 scraper = create_enhanced_linkedin_scraper(
 #                     username=linkedin_username,
@@ -1102,7 +1102,7 @@ def analyze_jobs():
 #             return jsonify({'success': False, 'error': 'Keywords are required'})
         
 #         # Get LinkedIn credentials
-#         from src.config.config_manager import ConfigurationManager
+#         from backend.src.config.config_manager import ConfigurationManager
 #         config_manager = ConfigurationManager()
 #         linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
 #         linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
@@ -1111,8 +1111,8 @@ def analyze_jobs():
 #             return jsonify({'success': False, 'error': 'LinkedIn credentials not configured'})
         
 #         # Import required modules
-#         from src.utils.search_strategy_manager import search_strategy_manager
-#         from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+#         from backend.src.utils.search_strategy_manager import search_strategy_manager
+#         from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
         
 #         # Convert date_posted to days
 #         date_posted_days = None
@@ -1281,7 +1281,7 @@ def search_linkedin_jobs():
         # Implement actual LinkedIn scraping with proper CAPTCHA handling
         try:
             # Initialize config manager first
-            from src.config.config_manager import ConfigurationManager
+            from backend.src.config.config_manager import ConfigurationManager
             config_manager = ConfigurationManager()
             
             # Get LinkedIn credentials from config
@@ -1325,8 +1325,8 @@ def search_linkedin_jobs():
                 })
             
             # Import search strategy manager and CAPTCHA handler
-            from src.utils.search_strategy_manager import search_strategy_manager
-            from src.utils.captcha_handler import captcha_handler
+            from backend.src.utils.search_strategy_manager import search_strategy_manager
+            from backend.src.utils.captcha_handler import captcha_handler
             
             # Get additional filters from request
             date_posted = request.form.get('date_posted')
@@ -1357,8 +1357,8 @@ def search_linkedin_jobs():
             scraper = None
             if strategy_info['method'] == 'api_only':
                 # Use API-only scraper for basic searches
-                from src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
-                from src.scrapers.base_scraper import ScrapingConfig
+                from backend.src.scrapers.linkedin_api_scraper import create_linkedin_api_scraper
+                from backend.src.scrapers.base_scraper import ScrapingConfig
                 
                 scraping_settings = config_manager.get_scraping_settings()
                 scraping_config = ScrapingConfig(
@@ -1387,12 +1387,12 @@ def search_linkedin_jobs():
                 
             else:
                 # Use WebDriver scraper for advanced searches with CAPTCHA handling
-                from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+                from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
                 
                 # Create enhanced scraper with user's job limit
-                from src.config.config_manager import ConfigurationManager
-                from src.scrapers.base_scraper import ScrapingConfig
-                from src.utils.session_manager import SessionManager
+                from backend.src.config.config_manager import ConfigurationManager
+                from backend.src.scrapers.base_scraper import ScrapingConfig
+                from backend.src.utils.session_manager import SessionManager
                 
                 # Get configuration and override max_jobs
                 config_manager_temp = ConfigurationManager()
@@ -1414,7 +1414,7 @@ def search_linkedin_jobs():
                 session_manager = SessionManager()
                 
                 # Create enhanced scraper with custom config
-                from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+                from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
                 scraper = EnhancedLinkedInScraper(enhanced_config, session_manager)
                 scraper.username = linkedin_username
                 scraper.password = linkedin_password
@@ -1622,7 +1622,7 @@ def search_linkedin_jobs():
                 user_profile = None
             else:
                 # Create UserProfile object for evaluation
-                from src.config.config_manager import UserProfile, AISettings
+                from backend.src.config.config_manager import UserProfile, AISettings
                 user_profile = UserProfile(
                     years_of_experience=user_profile_data.years_of_experience or 0,
                     experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else 'entry',
@@ -1667,7 +1667,7 @@ def search_linkedin_jobs():
                         try:
                             # Initialize qualification analyzer if not already done
                             if not hasattr(app, 'qualification_analyzer'):
-                                from src.ai.qualification_analyzer import QualificationAnalyzer
+                                from backend.src.ai.qualification_analyzer import QualificationAnalyzer
                                 app.qualification_analyzer = QualificationAnalyzer(ai_settings)
                             
                             # Check if quota is available before attempting evaluation
@@ -1795,7 +1795,7 @@ def continue_after_captcha():
             return jsonify({'success': False, 'error': 'Keywords are required'})
         
         # Get LinkedIn credentials
-        from src.config.config_manager import ConfigurationManager
+        from backend.src.config.config_manager import ConfigurationManager
         config_manager = ConfigurationManager()
         linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
         linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
@@ -1804,9 +1804,9 @@ def continue_after_captcha():
             return jsonify({'success': False, 'error': 'LinkedIn credentials not configured'})
         
         # Import required modules
-        from src.utils.search_strategy_manager import search_strategy_manager
-        from src.utils.captcha_handler import captcha_handler
-        from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+        from backend.src.utils.search_strategy_manager import search_strategy_manager
+        from backend.src.utils.captcha_handler import captcha_handler
+        from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
         
         # Convert date_posted to days
         date_posted_days = None
@@ -1934,7 +1934,7 @@ def continue_after_captcha():
                 user_profile = None
             else:
                 # Create UserProfile object for evaluation
-                from src.config.config_manager import UserProfile, AISettings
+                from backend.src.config.config_manager import UserProfile, AISettings
                 user_profile = UserProfile(
                     years_of_experience=user_profile_data.years_of_experience or 0,
                     experience_level=user_profile_data.experience_level.value if user_profile_data.experience_level else 'entry',
@@ -2003,7 +2003,7 @@ def continue_after_captcha():
                         try:
                             # Initialize qualification analyzer if not already done
                             if not hasattr(app, 'qualification_analyzer'):
-                                from src.ai.qualification_analyzer import QualificationAnalyzer
+                                from backend.src.ai.qualification_analyzer import QualificationAnalyzer
                                 app.qualification_analyzer = QualificationAnalyzer(ai_settings)
                             
                             # Prepare job data for evaluation
@@ -2100,7 +2100,7 @@ def check_captcha_status():
             return jsonify({'success': False, 'error': 'User not authenticated'})
         
         # Get LinkedIn credentials
-        from src.config.config_manager import ConfigurationManager
+        from backend.src.config.config_manager import ConfigurationManager
         config_manager = ConfigurationManager()
         linkedin_username = config_manager.get_linkedin_settings().username if config_manager else None
         linkedin_password = config_manager.get_linkedin_settings().password if config_manager else None
@@ -2109,8 +2109,8 @@ def check_captcha_status():
             return jsonify({'success': False, 'error': 'LinkedIn credentials not configured'})
         
         # Import required modules
-        from src.utils.captcha_handler import captcha_handler
-        from src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
+        from backend.src.utils.captcha_handler import captcha_handler
+        from backend.src.scrapers.linkedin_scraper_enhanced import create_enhanced_linkedin_scraper
         
         # Create WebDriver scraper for CAPTCHA checking
         scraper = None

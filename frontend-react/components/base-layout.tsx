@@ -73,12 +73,6 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
       active: pathname === "/search",
     },
     {
-      title: "Jobs",
-      href: "/jobs",
-      icon: Briefcase,
-      active: pathname === "/jobs",
-    },
-    {
       title: "Job Tracker",
       href: "/tracker",
       icon: TrendingUp,
@@ -101,13 +95,18 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
     },
   ]
 
-  if (!isAuthenticated && showSidebar) {
+  // Allow tracker page to show sidebar even without auth for testing
+  const isTrackerPage = pathname === "/tracker"
+  if (!isAuthenticated && showSidebar && !isTrackerPage) {
     return <GuestLayout title={title}>{children}</GuestLayout>
   }
 
   if (!showSidebar) {
     return <SimpleLayout title={title}>{children}</SimpleLayout>
   }
+
+  // Use appropriate navigation items based on auth status
+  const navItems = isAuthenticated ? navigationItems : guestNavigationItems.concat(navigationItems)
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -126,7 +125,7 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
               <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navigationItems.map((item) => (
+                  {navItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild isActive={item.active}>
                         <Link href={item.href}>
@@ -139,35 +138,50 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel>Profile</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/profile">
-                        <GraduationCap className="h-4 w-4" />
-                        <span>My Profile</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/settings">
-                        <Settings className="h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {isAuthenticated && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupLabel>Profile</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <Link href="/profile">
+                            <GraduationCap className="h-4 w-4" />
+                            <span>My Profile</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <Link href="/settings">
+                            <Settings className="h-4 w-4" />
+                            <span>Settings</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
               <SidebarMenuItem>
-                <UserMenu user={user} onLogout={logout} />
+                {isAuthenticated ? (
+                  <UserMenu user={user} onLogout={logout} />
+                ) : (
+                  <div className="flex flex-col gap-2 p-2">
+                    <Button asChild size="sm">
+                      <Link href="/auth/login">Login</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/auth/register">Register</Link>
+                    </Button>
+                  </div>
+                )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>

@@ -27,7 +27,7 @@ except ImportError:
     DOCX_AVAILABLE = False
     logging.warning("python-docx not available. DOCX processing will be disabled.")
 
-from src.utils.logger import JobAutomationLogger
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 

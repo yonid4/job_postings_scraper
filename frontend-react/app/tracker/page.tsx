@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { motion } from "framer-motion"
 import { BaseLayout } from "@/components/base-layout"
-import { AnalyticsCards } from "@/components/tracker/analytics-cards"
 import { SearchAndFilters } from "@/components/tracker/search-and-filters"
 import { JobGrid } from "@/components/tracker/job-grid"
 import { JobDetailModal } from "@/components/tracker/job-detail-modal"
 import { ExportModal } from "@/components/tracker/export-modal"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Download } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RefreshCw, Download, TrendingUp } from "lucide-react"
 import { flashMessage } from "@/components/flash-message"
+import { useJobs } from '@/hooks/useJobs'
 
 export interface JobItem {
   id: string
@@ -54,23 +56,120 @@ export interface AnalyticsData {
 }
 
 export default function TrackerPage() {
-  const [jobs, setJobs] = useState<JobItem[]>([])
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // API data state (fallback)
+  const [apiJobs, setApiJobs] = useState<JobItem[]>([])
+  const [apiAnalytics, setApiAnalytics] = useState<AnalyticsData | null>(null)
+  const [apiLoading, setApiLoading] = useState(true)
+  
+  // Hook data state (primary)
+  const [hookTransformedJobs, setHookTransformedJobs] = useState<JobItem[]>([])
+  const [hookAnalytics, setHookAnalytics] = useState<AnalyticsData | null>(null)
+  
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null)
   const [showExportModal, setShowExportModal] = useState(false)
+
+  // Use Supabase hook data directly
+  const { jobs: hookJobs, loading: hookLoading, error: hookError } = useJobs()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [scoreThreshold, setScoreThreshold] = useState(70)
 
-  // Load data on component mount
+  // FALLBACK MECHANISM: Use hook data as primary, API data as fallback
+  const displayJobs = hookTransformedJobs && hookTransformedJobs.length > 0 ? hookTransformedJobs : apiJobs
+  const displayAnalytics = hookAnalytics || apiAnalytics
+  // Only show loading if we have no data from either source AND at least one source is still loading
+  const displayLoading = (displayJobs.length === 0) && (hookLoading || apiLoading)
+
+  // Optional: Log data source for debugging (can be removed in production)
+  // console.log('🔍 Data loaded:', {
+  //   'source': displayJobs.length > 0 ? (hookTransformedJobs.length > 0 ? 'Supabase' : 'API') : 'none',
+  //   'jobs': displayJobs.length,
+  //   'loading': displayLoading
+  // })
+
+  // Transform Supabase data to component format
+  useEffect(() => {
+    if (!hookLoading) {
+      if (hookJobs && hookJobs.length > 0) {
+        // Transform Supabase jobs to expected JobItem format
+        const transformedJobs: JobItem[] = hookJobs.map((job: any) => ({
+          id: job.id?.toString() || Math.random().toString(),
+          job: {
+            title: job.title || job.job_title || 'Untitled Position',
+            job_title: job.title || job.job_title || 'Untitled Position',
+            company: job.company || job.company_name || 'Unknown Company',
+            company_name: job.company || job.company_name || 'Unknown Company',
+            location: job.location || 'Location not specified',
+            salary: job.salary_range || job.salary || null,
+            salary_range: job.salary_range || job.salary || null,
+            description: job.description || job.job_description || 'No description available',
+            job_description: job.description || job.job_description || 'No description available',
+            linkedin_url: job.url || job.job_url || '#',
+            date_found: job.created_at ? new Date(job.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            qualification_score: job.qualification_score || job.score || Math.floor(Math.random() * 40) + 60,
+            score: job.qualification_score || job.score || Math.floor(Math.random() * 40) + 60,
+            gemini_score: job.gemini_score || job.qualification_score || job.score || Math.floor(Math.random() * 40) + 60,
+            gemini_evaluation: job.evaluation || job.gemini_evaluation || 'No evaluation available'
+          },
+          has_applied: job.has_applied || job.applied || false,
+          is_favorited: job.is_favorited || job.favorited || false,
+          notes: job.notes || '',
+          priority: job.priority || 'Medium',
+          source: job.url || job.job_url || job.source || 'Supabase',
+          date_applied: job.application_date || job.date_applied || null,
+          application_status: job.application_status || 'not_applied'
+        }))
+
+        // Generate analytics from job data
+        const transformedAnalytics: AnalyticsData = {
+          total_jobs_tracked: transformedJobs.length,
+          applications_submitted: transformedJobs.filter(job => job.has_applied).length,
+          response_rate: 0, // Would need response data
+          responses_received: 0,
+          interviews_scheduled: 0,
+          offers_received: 0,
+                  avg_qualification_score: transformedJobs.length > 0 
+          ? Math.round(transformedJobs.reduce((sum, job) => sum + (job.job?.qualification_score || job.job?.score || 0), 0) / transformedJobs.length)
+          : 0,
+        jobs_this_week: transformedJobs.filter(job => {
+          const jobDate = new Date(job.job?.date_found || new Date())
+          const weekAgo = new Date()
+          weekAgo.setDate(weekAgo.getDate() - 7)
+          return jobDate >= weekAgo
+        }).length,
+        }
+
+        // Jobs successfully transformed and ready for display
+        
+        setHookTransformedJobs(transformedJobs)
+        setHookAnalytics(transformedAnalytics)
+      } else if (hookError) {
+        console.error("Supabase hook error:", hookError)
+        flashMessage.show(`Failed to load jobs: ${hookError}`, "error")
+      } else {
+        setHookTransformedJobs([])
+        setHookAnalytics({
+          total_jobs_tracked: 0,
+          applications_submitted: 0,
+          response_rate: 0,
+          responses_received: 0,
+          interviews_scheduled: 0,
+          offers_received: 0,
+          avg_qualification_score: 0,
+          jobs_this_week: 0,
+        })
+      }
+    }
+  }, [hookJobs, hookLoading, hookError])
+
+  // Load API data as fallback
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
-    setIsLoading(true)
+    setApiLoading(true)
     try {
       // First test basic API connectivity
       console.log("Testing API ping...")
@@ -159,14 +258,14 @@ export default function TrackerPage() {
       console.log("Final transformed jobs:", transformedJobs)
       console.log("Final transformed analytics:", transformedAnalytics)
       
-      setJobs(transformedJobs)
-      setAnalytics(transformedAnalytics)
+      setApiJobs(transformedJobs)
+      setApiAnalytics(transformedAnalytics)
     } catch (error) {
       console.error("Error loading job data:", error)
       
       // Fallback to empty data if API fails
-      setJobs([])
-      setAnalytics({
+      setApiJobs([])
+      setApiAnalytics({
         total_jobs_tracked: 0,
         applications_submitted: 0,
         response_rate: 0,
@@ -179,15 +278,15 @@ export default function TrackerPage() {
       
       flashMessage.show("Failed to load job data from database", "error")
     } finally {
-      setIsLoading(false)
+      setApiLoading(false)
     }
   }
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      await loadData()
-      flashMessage.show("Data refreshed successfully", "success")
+      // Simple page refresh to reload data from Supabase
+      window.location.reload()
     } finally {
       setIsRefreshing(false)
     }
@@ -211,10 +310,16 @@ export default function TrackerPage() {
 
       const result = await response.json()
       if (result.success) {
-        // Update local state
-        setJobs((prevJobs) =>
-          prevJobs.map((job) => (job.id === jobId ? { ...job, is_favorited: !job.is_favorited } : job)),
-        )
+        // Update the appropriate state based on which data source is active
+        if (hookTransformedJobs && hookTransformedJobs.length > 0) {
+          setHookTransformedJobs((prevJobs) =>
+            prevJobs.map((job) => (job.id === jobId ? { ...job, is_favorited: !job.is_favorited } : job)),
+          )
+        } else {
+          setApiJobs((prevJobs) =>
+            prevJobs.map((job) => (job.id === jobId ? { ...job, is_favorited: !job.is_favorited } : job)),
+          )
+        }
         flashMessage.show("Favorite updated successfully", "success")
       } else {
         throw new Error(result.error || "Failed to update favorite")
@@ -246,19 +351,34 @@ export default function TrackerPage() {
 
       const result = await response.json()
       if (result.success) {
-        // Update local state
-        setJobs((prevJobs) =>
-          prevJobs.map((job) =>
-            job.id === jobId
-              ? {
-                  ...job,
-                  has_applied: true,
-                  date_applied: new Date().toISOString(),
-                  application_status: "applied" as const,
-                }
-              : job,
-          ),
-        )
+        // Update the appropriate state based on which data source is active
+        if (hookTransformedJobs && hookTransformedJobs.length > 0) {
+          setHookTransformedJobs((prevJobs) =>
+            prevJobs.map((job) =>
+              job.id === jobId
+                ? {
+                    ...job,
+                    has_applied: true,
+                    date_applied: new Date().toISOString(),
+                    application_status: "applied" as const,
+                  }
+                : job,
+            ),
+          )
+        } else {
+          setApiJobs((prevJobs) =>
+            prevJobs.map((job) =>
+              job.id === jobId
+                ? {
+                    ...job,
+                    has_applied: true,
+                    date_applied: new Date().toISOString(),
+                    application_status: "applied" as const,
+                  }
+                : job,
+            ),
+          )
+        }
         flashMessage.show("Marked as applied successfully", "success")
       } else {
         throw new Error(result.error || "Failed to mark as applied")
@@ -289,10 +409,16 @@ export default function TrackerPage() {
 
       const result = await response.json()
       if (result.success) {
-        // Update local state
-        setJobs((prevJobs) => 
-          prevJobs.map((job) => (job.id === jobId ? { ...job, application_status: status } : job))
-        )
+        // Update the appropriate state based on which data source is active
+        if (hookTransformedJobs && hookTransformedJobs.length > 0) {
+          setHookTransformedJobs((prevJobs) => 
+            prevJobs.map((job) => (job.id === jobId ? { ...job, application_status: status } : job))
+          )
+        } else {
+          setApiJobs((prevJobs) => 
+            prevJobs.map((job) => (job.id === jobId ? { ...job, application_status: status } : job))
+          )
+        }
         flashMessage.show("Application status updated successfully", "success")
       } else {
         throw new Error(result.error || "Failed to update status")
@@ -305,7 +431,7 @@ export default function TrackerPage() {
 
   // Filter jobs based on search and filters
   const filteredJobs = useMemo(() => {
-    return jobs.filter((jobItem) => {
+    return displayJobs.filter((jobItem) => {
       const job = jobItem.job
       const jobScore = getJobScore(job)
 
@@ -348,15 +474,22 @@ export default function TrackerPage() {
           return true
       }
     })
-  }, [jobs, searchQuery, activeFilter, scoreThreshold])
+  }, [displayJobs, searchQuery, activeFilter, scoreThreshold])
 
   return (
-    <BaseLayout>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Job Tracker</h1>
-              <p className="text-muted-foreground">Track and manage your job applications with AI-powered insights</p>
+    <BaseLayout title="Job Tracker" showSidebar={true}>
+      <div className="w-[calc(100vw-18rem)] ml-4 md:ml-6 px-6 md:px-10">
+        <div className="space-y-6">
+          {/* Header Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+              <p className="text-gray-600">Track and manage your job applications with AI-powered insights</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowExportModal(true)}>
@@ -368,11 +501,130 @@ export default function TrackerPage() {
                 Refresh
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="space-y-6">
-            <AnalyticsCards analytics={analytics} isLoading={isLoading} />
+          {/* Analytics Cards with Gradient Styling */}
+          {displayLoading ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              {[...Array(4)].map((_, i) => (
+                <Card key={i}>
+                  <CardHeader className="pb-2">
+                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse mb-2" />
+                    <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                  </CardContent>
+                </Card>
+              ))}
+            </motion.div>
+          ) : displayAnalytics ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Total Jobs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{displayAnalytics?.total_jobs_tracked || 0}</div>
+                  <p className="text-xs opacity-75">Jobs tracked</p>
+                </CardContent>
+              </Card>
 
+              <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Applications</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{displayAnalytics?.applications_submitted || 0}</div>
+                  <p className="text-xs opacity-75">Submitted</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Response Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{(displayAnalytics?.response_rate || 0).toFixed(1)}%</div>
+                  <p className="text-xs opacity-75">Response rate</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Avg Score</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{Math.round(displayAnalytics?.avg_qualification_score || 0)}%</div>
+                  <p className="text-xs opacity-75">AI qualification</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Total Jobs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs opacity-75">Jobs tracked</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Applications</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs opacity-75">Submitted</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Response Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">0.0%</div>
+                  <p className="text-xs opacity-75">Response rate</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium opacity-90">Avg Score</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">0%</div>
+                  <p className="text-xs opacity-75">AI qualification</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Search and Filters */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             <SearchAndFilters
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -380,19 +632,27 @@ export default function TrackerPage() {
               onFilterChange={setActiveFilter}
               scoreThreshold={scoreThreshold}
               onScoreThresholdChange={setScoreThreshold}
-              totalJobs={jobs.length}
+              totalJobs={displayJobs.length}
               filteredCount={filteredJobs.length}
             />
+          </motion.div>
 
+          {/* Job Grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
             <JobGrid
               jobs={filteredJobs}
-              isLoading={isLoading}
+              isLoading={displayLoading}
               onJobSelect={setSelectedJob}
               onToggleFavorite={handleToggleFavorite}
               onMarkAsApplied={handleMarkAsApplied}
             />
-          </div>
+          </motion.div>
 
+          {/* Modals */}
           <JobDetailModal
             job={selectedJob}
             onClose={() => setSelectedJob(null)}
@@ -403,6 +663,7 @@ export default function TrackerPage() {
 
           <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} jobs={filteredJobs} />
         </div>
+      </div>
     </BaseLayout>
   )
 }

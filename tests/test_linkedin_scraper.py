@@ -22,9 +22,9 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
 try:
-    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-    from src.scrapers.base_scraper import ScrapingConfig
-    from src.utils.logger import JobAutomationLogger
+    from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+    from backend.src.scrapers.base_scraper import ScrapingConfig
+    from backend.src.utils.logger import JobAutomationLogger
 except ImportError:
     try:
         from scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper

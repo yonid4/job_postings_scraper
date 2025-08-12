@@ -21,12 +21,12 @@ from pathlib import Path
 parent_dir = Path(__file__).parent
 sys.path.insert(0, str(parent_dir))
 
-from src.data.job_tracker import JobTracker
-from src.data.models import (
+from backend.src.data.job_tracker import JobTracker
+from backend.src.data.models import (
     JobSearch, JobApplication, JobFavorite, JobListing,
     ApplicationStatus, ApplicationMethod, JobType, ExperienceLevel, RemoteType
 )
-from src.utils.logger import JobAutomationLogger
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 

@@ -15,11 +15,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
-from src.data.models import (
+from backend.src.data.models import (
     JobSearch, JobApplication, JobFavorite, JobListing, 
     ApplicationStatus, ApplicationMethod, QualificationResult
 )
-from src.utils.logger import JobAutomationLogger
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 
@@ -626,7 +626,7 @@ class JobTracker:
     # Helper methods for converting database rows to objects
     def _row_to_job_search(self, row: tuple) -> JobSearch:
         """Convert a database row to a JobSearch object."""
-        from src.data.models import RemoteType, ExperienceLevel, JobType
+        from backend.src.data.models import RemoteType, ExperienceLevel, JobType
         
         return JobSearch(
             id=row[0], user_id=row[1], search_name=row[2],
@@ -671,7 +671,7 @@ class JobTracker:
     
     def _row_to_job_listing(self, row: tuple) -> JobListing:
         """Convert a database row to a JobListing object."""
-        from src.data.models import JobType, ExperienceLevel, RemoteType
+        from backend.src.data.models import JobType, ExperienceLevel, RemoteType
         
         return JobListing(
             id=row[0], title=row[1], company=row[2], location=row[3],

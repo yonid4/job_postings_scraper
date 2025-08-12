@@ -15,8 +15,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, NoSuchElementException
-from src.config.config_manager import ConfigurationManager
-from src.utils.logger import JobAutomationLogger
+from backend.src.config.config_manager import ConfigurationManager
+from backend.src.utils.logger import JobAutomationLogger
 
 def test_simple_captcha():
     """Test simple CAPTCHA handling."""
@@ -159,13 +159,13 @@ def test_simple_captcha():
         
         if challenge_detected:
             print(f"🔒 CAPTCHA/Security Challenge Detected: {detected_indicator}")
-            print("Please complete the security challenge in the browser window.")
-            print("Press Enter in this terminal when you have completed the challenge...")
+            print("In interactive mode, user would complete the security challenge manually.")
+            print("For automated testing, skipping CAPTCHA challenge...")
             
-            # Wait for user to press Enter
-            input("Press Enter when you have completed the security challenge...")
+            # Skip user input for automated testing
+            # input("Press Enter when you have completed the security challenge...")
             
-            print("User indicated challenge completion. Checking authentication status...")
+            print("Simulating challenge completion for automated testing...")
             
             # Wait a moment for the page to update
             time.sleep(3)
@@ -214,9 +214,9 @@ def test_simple_captcha():
         
     finally:
         # Keep the browser open for manual inspection
-        print("\nTest completed. Browser will remain open for manual inspection.")
-        print("Press Enter to close the browser...")
-        input()
+        print("\nTest completed. Browser would remain open for manual inspection in interactive mode.")
+        print("Skipping browser close prompt for automated testing...")
+        # input()  # Disabled for pytest
         
         if driver:
             try:

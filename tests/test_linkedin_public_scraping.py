@@ -11,10 +11,10 @@ from pathlib import Path
 parent_dir = Path(__file__).parent
 sys.path.insert(0, str(parent_dir))
 
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
-from src.utils.logger import JobAutomationLogger
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.utils.session_manager import SessionManager
+from backend.src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 
@@ -39,7 +39,7 @@ def test_linkedin_authenticated_scraping():
         )
         
         # Get LinkedIn credentials from settings
-        from src.config.config_manager import ConfigurationManager
+        from backend.src.config.config_manager import ConfigurationManager
         config_manager = ConfigurationManager()
         linkedin_config = config_manager.get_linkedin_settings()
         

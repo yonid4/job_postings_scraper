@@ -2,15 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { createClient } from "@supabase/supabase-js"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-const hasSupabaseConfig = supabaseUrl && supabaseKey && supabaseUrl !== "https://your-project.supabase.co"
-
-const supabase = hasSupabaseConfig ? createClient(supabaseUrl, supabaseKey) : null
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: string
@@ -47,21 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // If Supabase is not configured, use localStorage fallback
+    // Skip auth setup if Supabase is not configured
     if (!supabase) {
-      const checkLocalAuth = async () => {
-        try {
-          const storedUser = localStorage.getItem("user")
-          if (storedUser) {
-            setUser(JSON.parse(storedUser))
-          }
-        } catch (error) {
-          console.error("Auth check failed:", error)
-        } finally {
-          setLoading(false)
-        }
-      }
-      checkLocalAuth()
+      console.warn("⚠️ Supabase not configured - auth features disabled")
+      setLoading(false)
       return
     }
 
@@ -98,20 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     if (!supabase) {
-      // Fallback to mock authentication for development
-      const mockUser: User = {
-        id: "1",
-        email,
-        display_name: "John Doe",
-        avatar_url: "/placeholder.svg?height=32&width=32",
-        email_verified: true,
-        profile_completed: Math.random() > 0.5,
-      }
-      setUser(mockUser)
-      localStorage.setItem("user", JSON.stringify(mockUser))
-      return
+      throw new Error("Supabase not configured - auth features disabled")
     }
-
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -128,12 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (!supabase) {
-      // Fallback for mock authentication
-      setUser(null)
-      localStorage.removeItem("user")
+      console.warn("Supabase not configured - logout skipped")
       return
     }
-
+    
     await supabase.auth.signOut()
     setUser(null)
   }

@@ -19,10 +19,10 @@ from pathlib import Path
 parent_dir = Path(__file__).parent
 sys.path.insert(0, str(parent_dir))
 
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
-from src.utils.session_manager import SessionManager
-from src.config.config_manager import ConfigurationManager
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.scrapers.linkedin_scraper_enhanced import ScrapingConfig
+from backend.src.utils.session_manager import SessionManager
+from backend.src.config.config_manager import ConfigurationManager
 
 
 def test_remote_filter():

@@ -14,9 +14,9 @@ from typing import Optional, Dict, Any, List
 from pathlib import Path
 from supabase import Client
 
-from src.data.models import Resume
-from src.data.resume_processor import ResumeProcessor
-from src.utils.logger import JobAutomationLogger
+from backend.src.data.models import Resume
+from backend.src.data.resume_processor import ResumeProcessor
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 

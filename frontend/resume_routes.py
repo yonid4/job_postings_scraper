@@ -16,9 +16,9 @@ from werkzeug.datastructures import FileStorage
 import logging
 from pathlib import Path
 
-from src.data.resume_manager import ResumeManager
-from src.auth.auth_context import login_required, get_user_id
-from src.utils.logger import JobAutomationLogger
+from backend.src.data.resume_manager import ResumeManager
+from backend.src.auth.auth_context import login_required, get_user_id
+from backend.src.utils.logger import JobAutomationLogger
 
 logger = JobAutomationLogger()
 

@@ -7,8 +7,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.utils.job_link_processor import JobLinkProcessor
-from src.config.config_manager import ConfigurationManager
+from backend.src.utils.job_link_processor import JobLinkProcessor
+from backend.src.config.config_manager import ConfigurationManager
 import logging
 
 # Set up logging

@@ -12,10 +12,10 @@ from datetime import datetime
 # Add the src directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from src.config.config_manager import ConfigurationManager
-from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.base_scraper import ScrapingConfig
+from backend.src.config.config_manager import ConfigurationManager
+from backend.src.utils.session_manager import SessionManager
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.scrapers.base_scraper import ScrapingConfig
 
 def test_filter_detection_logic():
     """Test the filter detection logic that determines which scraper to use."""

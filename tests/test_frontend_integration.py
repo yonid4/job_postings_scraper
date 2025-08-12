@@ -215,7 +215,7 @@ def test_backend_integration_simulation():
     try:
         # Mock the necessary components
         with patch('src.config.config_manager.ConfigManager') as mock_config_manager, \
-             patch('src.ai.qualification_analyzer.QualificationAnalyzer') as mock_analyzer:
+             patch('backend.src.ai.qualification_analyzer.QualificationAnalyzer') as mock_analyzer:
             
             # Setup mocks
             mock_config = Mock()
@@ -265,9 +265,9 @@ def test_backend_integration_simulation():
                 
                 # Try to import the scraper (this is where it might fail in real execution)
                 try:
-                    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-                    from src.utils.session_manager import SessionManager
-                    from src.scrapers.base_scraper import ScrapingConfig
+                    from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+                    from backend.src.utils.session_manager import SessionManager
+                    from backend.src.scrapers.base_scraper import ScrapingConfig
                     
                     # Create session manager
                     session_manager = SessionManager()

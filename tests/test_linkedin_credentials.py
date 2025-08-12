@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from config.config_manager import ConfigurationManager
+from backend.src.config.config_manager import ConfigurationManager
 
 def test_linkedin_credentials_loading():
     """Test that LinkedIn credentials are loaded from .env file."""

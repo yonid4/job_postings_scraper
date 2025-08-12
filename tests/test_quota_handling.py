@@ -11,12 +11,12 @@ import threading
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 
-from src.ai.qualification_analyzer import (
+from backend.src.ai.qualification_analyzer import (
     GeminiQuotaManager, 
     QualificationAnalyzer, 
     AnalysisRequest
 )
-from src.config.config_manager import AISettings
+from backend.src.config.config_manager import AISettings
 
 
 class TestGeminiQuotaManager:

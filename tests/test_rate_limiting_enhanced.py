@@ -14,8 +14,8 @@ from pathlib import Path
 parent_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from src.ai.qualification_analyzer import GeminiQuotaManager, QualificationAnalyzer
-from src.config.config_manager import AISettings
+from backend.src.ai.qualification_analyzer import GeminiQuotaManager, QualificationAnalyzer
+from backend.src.config.config_manager import AISettings
 
 
 class TestEnhancedRateLimiting:

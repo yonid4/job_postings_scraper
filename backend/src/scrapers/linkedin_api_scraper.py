@@ -23,8 +23,8 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import re
 
-from src.scrapers.base_scraper import BaseScraper, ScrapingResult, ScrapingConfig
-from src.data.models import JobListing
+from backend.src.scrapers.base_scraper import BaseScraper, ScrapingResult, ScrapingConfig
+from backend.src.data.models import JobListing
 
 
 class LinkedInAPIScraper(BaseScraper):

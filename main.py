@@ -12,15 +12,15 @@ import os
 from pathlib import Path
 from typing import Optional, List
 
-# Add src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add backend/src directory to Python path
+sys.path.insert(0, str(Path(__file__).parent / "backend" / "src"))
 
-from src.config.config_manager import ConfigurationError, ConfigurationManager, UserProfile, AISettings
-from src.utils.logger import setup_logging, JobAutomationLogger
-from src.data.models import JobListing, QualificationResult, ScrapingSession, QualificationStatus, UserDecision
+from backend.src.config.config_manager import ConfigurationError, ConfigurationManager, UserProfile, AISettings
+from backend.src.utils.logger import setup_logging, JobAutomationLogger
+from backend.src.data.models import JobListing, QualificationResult, ScrapingSession, QualificationStatus, UserDecision
 
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
-from src.utils.job_link_processor import JobLinkProcessor, JobLinkInfo
+from backend.src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
+from backend.src.utils.job_link_processor import JobLinkProcessor, JobLinkInfo
 
 
 class JobQualificationSystem:

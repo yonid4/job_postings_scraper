@@ -11,9 +11,9 @@ from pathlib import Path
 # Add src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.config.config_manager import ConfigurationManager, JobCriteria, ScrapingSettings
-from src.data.models import JobListing, JobApplication, ScrapingSession, ApplicationStatus
-from src.utils.logger import setup_logging
+from backend.src.config.config_manager import ConfigurationManager, JobCriteria, ScrapingSettings
+from backend.src.data.models import JobListing, JobApplication, ScrapingSession, ApplicationStatus
+from backend.src.utils.logger import setup_logging
 
 
 class TestConfigurationManager:
@@ -142,13 +142,13 @@ class TestLogging:
 def test_system_imports():
     """Test that all system modules can be imported correctly."""
     # Test configuration imports
-    from src.config import ConfigurationManager, ConfigurationError
+    from backend.src.config import ConfigurationManager, ConfigurationError
     
     # Test data model imports
-    from src.data import JobListing, JobApplication, ScrapingSession
+    from backend.src.data import JobListing, JobApplication, ScrapingSession
     
     # Test utility imports
-    from src.utils import setup_logging, JobAutomationLogger
+    from backend.src.utils import setup_logging, JobAutomationLogger
     
     # If we get here, all imports worked
     assert True

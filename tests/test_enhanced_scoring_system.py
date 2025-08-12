@@ -17,9 +17,9 @@ from pathlib import Path
 parent_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
-from src.config.config_manager import AISettings, UserProfile
-from src.data.models import QualificationStatus
+from backend.src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest, AnalysisResponse
+from backend.src.config.config_manager import AISettings, UserProfile
+from backend.src.data.models import QualificationStatus
 
 
 class TestEnhancedScoringSystem(unittest.TestCase):
@@ -223,7 +223,7 @@ Requirements:
         
         print("✅ Test 4 Passed: Profile-only prompt generated correctly")
     
-    @patch('src.ai.qualification_analyzer.genai')
+    @patch('backend.src.ai.qualification_analyzer.genai')
     def test_response_parsing_with_components(self, mock_genai):
         """Test parsing of enhanced response with component scores."""
         # Mock API response

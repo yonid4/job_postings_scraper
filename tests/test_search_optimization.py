@@ -21,7 +21,7 @@ def test_search_strategy_manager():
     print("=" * 50)
     
     try:
-        from src.utils.search_strategy_manager import search_strategy_manager, SearchParameters
+        from backend.src.utils.search_strategy_manager import search_strategy_manager, SearchParameters
         
         # Test 1: Basic search (should use API-only)
         print("\n📋 Test 1: Basic search (keywords + location)")
@@ -107,7 +107,7 @@ def test_captcha_handler():
     print("=" * 50)
     
     try:
-        from src.utils.captcha_handler import captcha_handler, CAPTCHAStatus, CAPTCHAInfo
+        from backend.src.utils.captcha_handler import captcha_handler, CAPTCHAStatus, CAPTCHAInfo
         
         # Test 1: CAPTCHA info creation
         print("\n📋 Test 1: CAPTCHA info creation")
@@ -177,7 +177,7 @@ def test_api_scraper_creation():
     
     try:
         # Test the core functionality without full imports
-        from src.utils.search_strategy_manager import search_strategy_manager
+        from backend.src.utils.search_strategy_manager import search_strategy_manager
         
         # Test URL building logic (which doesn't require full scraper)
         keywords = ['software engineer']
@@ -235,8 +235,8 @@ def test_integration():
     print("=" * 50)
     
     try:
-        from src.utils.search_strategy_manager import search_strategy_manager
-        from src.utils.captcha_handler import captcha_handler
+        from backend.src.utils.search_strategy_manager import search_strategy_manager
+        from backend.src.utils.captcha_handler import captcha_handler
         
         # Test 1: Strategy decision with CAPTCHA handling
         print("\n📋 Test 1: Strategy decision with CAPTCHA handling")
@@ -255,7 +255,7 @@ def test_integration():
         print("\n📋 Test 2: CAPTCHA detection simulation")
         captcha_info = captcha_handler.detect_captcha()
         # Since we don't have a real driver, this should return NOT_DETECTED or ERROR
-        from src.utils.captcha_handler import CAPTCHAStatus
+        from backend.src.utils.captcha_handler import CAPTCHAStatus
         assert captcha_info.status in [CAPTCHAStatus.NOT_DETECTED, CAPTCHAStatus.ERROR]
         print("✅ PASS: CAPTCHA detection simulation works correctly")
         

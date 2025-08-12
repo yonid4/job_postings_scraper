@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from datetime import datetime
 from typing import Dict, Any
 
-from src.data.models import JobListing, JobType, ExperienceLevel, RemoteType
+from backend.src.data.models import JobListing, JobType, ExperienceLevel, RemoteType
 
 
 class TestSupabaseIntegration(unittest.TestCase):

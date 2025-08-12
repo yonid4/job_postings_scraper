@@ -12,10 +12,10 @@ from datetime import datetime
 # Add the src directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from src.config.config_manager import ConfigurationManager
-from src.utils.session_manager import SessionManager
-from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
-from src.scrapers.base_scraper import ScrapingConfig
+from backend.src.config.config_manager import ConfigurationManager
+from backend.src.utils.session_manager import SessionManager
+from backend.src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+from backend.src.scrapers.base_scraper import ScrapingConfig
 
 def test_filter_options_simple():
     """Test filter options with better error handling."""
@@ -74,9 +74,9 @@ def test_filter_options_simple():
         
         if not auth_success:
             print("\n⚠️ Automatic authentication failed.")
-            print("Please manually authenticate in the browser window that opened.")
-            print("Once you're logged in, press Enter to continue...")
-            input()
+            print("In interactive mode, user would manually authenticate in the browser window.")
+            print("For automated testing, skipping manual authentication...")
+            # input()  # Disabled for pytest
             
             # Check if we're now on a LinkedIn page
             current_url = scraper.driver.current_url

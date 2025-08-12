@@ -12,16 +12,16 @@ import pytest
 from typing import Dict, Any
 
 # Add src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
 
-from scrapers import (
+from backend.src.scrapers import (
     BaseScraper, 
     ScrapingResult, 
     ScrapingConfig,
     ExampleScraper, 
     create_example_scraper
 )
-from data.models import JobListing, ScrapingSession
+from backend.src.data.models import JobListing, ScrapingSession
 
 
 class TestBaseScraper:
@@ -108,7 +108,7 @@ class TestExampleScraper:
         job_details = scraper.get_job_details(job_url)
         
         assert isinstance(job_details, JobListing)
-        assert job_details.job_url == job_url
+        assert job_details.linkedin_url == job_url
         assert job_details.job_site == "example"
         assert len(job_details.requirements) > 0
         assert len(job_details.responsibilities) > 0
@@ -156,7 +156,7 @@ class TestExampleScraper:
         job_details = scraper.extract_job_details_from_page(page_content, job_url)
         
         assert isinstance(job_details, JobListing)
-        assert job_details.job_url == job_url
+        assert job_details.linkedin_url == job_url
         assert job_details.job_site == "example"
         assert job_details.requirements
         assert job_details.responsibilities
@@ -188,7 +188,7 @@ class TestScrapingResult:
             title="Test Job",
             company="Test Company",
             location="Remote",
-            job_url="https://example.com/job",
+            linkedin_url="https://example.com/job",
             job_site="example"
         )]
         session = ScrapingSession(
@@ -240,7 +240,7 @@ class TestUtilityFunctions:
     
     def test_sanitize_text(self):
         """Test text sanitization."""
-        from scrapers import sanitize_text
+        from backend.src.scrapers import sanitize_text
         
         # Test normal text
         assert sanitize_text("  Hello   World  ") == "Hello World"
@@ -255,7 +255,7 @@ class TestUtilityFunctions:
     
     def test_extract_salary_range(self):
         """Test salary range extraction."""
-        from scrapers import extract_salary_range
+        from backend.src.scrapers import extract_salary_range
         
         # Test various formats
         assert extract_salary_range("$50,000 - $80,000") == (50000, 80000)
@@ -269,7 +269,7 @@ class TestUtilityFunctions:
     
     def test_is_valid_url(self):
         """Test URL validation."""
-        from scrapers import is_valid_url
+        from backend.src.scrapers import is_valid_url
         
         # Valid URLs
         assert is_valid_url("https://example.com") is True
@@ -295,12 +295,12 @@ if __name__ == "__main__":
     
     # Test job details
     if result.jobs:
-        job_details = scraper.get_job_details(result.jobs[0].job_url)
+        job_details = scraper.get_job_details(result.jobs[0].linkedin_url)
         print(f"✅ Job details test successful: {job_details.title}")
         print(f"✅ Requirements: {job_details.requirements}")
     
     # Test utility functions
-    from scrapers import sanitize_text, extract_salary_range, is_valid_url
+    from backend.src.scrapers import sanitize_text, extract_salary_range, is_valid_url
     
     print(f"✅ Text sanitization: '{sanitize_text('  Test   Text  ')}'")
     print(f"✅ Salary extraction: {extract_salary_range('$50,000 - $80,000')}")

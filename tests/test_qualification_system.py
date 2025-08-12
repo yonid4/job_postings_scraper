@@ -6,14 +6,14 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.ai.qualification_analyzer import (
+from backend.src.ai.qualification_analyzer import (
     QualificationAnalyzer, 
     AnalysisRequest, 
     AnalysisResponse,
     JobEvaluationResult
 )
-from src.config.config_manager import UserProfile, AISettings
-from src.data.models import QualificationStatus, UserDecision
+from backend.src.config.config_manager import UserProfile, AISettings
+from backend.src.data.models import QualificationStatus, UserDecision
 
 
 class TestQualificationAnalyzerRetryLogic:
@@ -34,14 +34,16 @@ class TestQualificationAnalyzerRetryLogic:
     def user_profile(self):
         """Create test user profile."""
         return UserProfile(
-            name="Test User",
-            email="test@example.com",
-            experience_years=5,
-            skills=["Python", "JavaScript", "React"],
-            education="Bachelor's in Computer Science",
-            preferred_job_types=["full-time"],
+            years_of_experience=5,
+            has_college_degree=True,
+            field_of_study="Computer Science",
+            education_details="Bachelor's in Computer Science",
+            experience_level="mid",
+            additional_skills=["Python", "JavaScript", "React"],
             preferred_locations=["San Francisco", "New York"],
-            salary_expectations={"min": 80000, "max": 120000}
+            salary_min=80000,
+            salary_max=120000,
+            remote_preference="any"
         )
     
     @pytest.fixture
@@ -58,7 +60,7 @@ class TestQualificationAnalyzerRetryLogic:
     @pytest.fixture
     def analyzer(self, ai_settings):
         """Create a qualification analyzer with mocked Gemini client."""
-        with patch('src.ai.qualification_analyzer.genai') as mock_genai:
+        with patch('backend.src.ai.qualification_analyzer.genai') as mock_genai:
             mock_genai.configure.return_value = None
             mock_model = Mock()
             mock_genai.GenerativeModel.return_value = mock_model
@@ -99,7 +101,7 @@ class TestQualificationAnalyzerRetryLogic:
         
         # Verify result
         assert result.qualification_score == 85
-        assert result.qualification_status == QualificationStatus.QUALIFIED
+        assert result.qualification_status == QualificationStatus.HIGHLY_QUALIFIED  # Score 85 maps to HIGHLY_QUALIFIED
         assert "Strong match" in result.ai_reasoning
         assert result.ai_model_used == "gemini-pro"
         

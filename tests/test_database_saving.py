@@ -9,8 +9,8 @@ import os
 from datetime import datetime
 from unittest.mock import Mock
 
-from src.data.job_tracker import JobTracker
-from src.data.models import JobListing, JobType, ExperienceLevel, RemoteType
+from backend.src.data.job_tracker import JobTracker
+from backend.src.data.models import JobListing, JobType, ExperienceLevel, RemoteType
 
 
 class TestDatabaseSaving(unittest.TestCase):

@@ -401,7 +401,15 @@ class BaseScraper(ABC):
             Dictionary of performance metrics
         """
         if not self.start_time:
-            return {}
+            # Return initialized metrics with 0 values when no operations have started
+            return {
+                "total_duration": 0.0,
+                "requests_count": 0,
+                "requests_per_minute": 0.0,
+                "jobs_found": 0,
+                "jobs_processed": 0,
+                "errors_encountered": 0
+            }
         
         total_duration = (datetime.now() - self.start_time).total_seconds()
         requests_per_minute = (self.request_count / total_duration) * 60 if total_duration > 0 else 0
@@ -443,7 +451,10 @@ def sanitize_text(text: str) -> str:
     
     # Remove common unwanted characters
     text = text.replace('\xa0', ' ')  # Non-breaking space
-    text = text.replace('\u200b', '')  # Zero-width space
+    text = text.replace('\u200b', ' ')  # Zero-width space -> space
+    
+    # Clean up multiple spaces after character replacements
+    text = " ".join(text.split())
     
     return text.strip()
 
@@ -467,8 +478,10 @@ def extract_salary_range(text: str) -> tuple[Optional[int], Optional[int]]:
     patterns = [
         r'\$(\d{1,3}(?:,\d{3})*)\s*-\s*\$(\d{1,3}(?:,\d{3})*)',  # $50,000 - $80,000
         r'\$(\d{1,3}(?:,\d{3})*)\s*to\s*\$(\d{1,3}(?:,\d{3})*)',  # $50,000 to $80,000
-        r'(\d{1,3}(?:,\d{3})*)\s*-\s*(\d{1,3}(?:,\d{3})*)\s*k',   # 50k - 80k
-        r'(\d{1,3}(?:,\d{3})*)\s*to\s*(\d{1,3}(?:,\d{3})*)\s*k',  # 50k to 80k
+        r'(\d{1,3}(?:,\d{3})*)k\s*-\s*(\d{1,3}(?:,\d{3})*)k',   # 50k - 80k
+        r'(\d{1,3}(?:,\d{3})*)k\s*to\s*(\d{1,3}(?:,\d{3})*)k',  # 50k to 80k
+        r'(\d{1,3}(?:,\d{3})*)\s*-\s*(\d{1,3}(?:,\d{3})*)\s*k',   # 50 - 80k (group k)
+        r'(\d{1,3}(?:,\d{3})*)\s*to\s*(\d{1,3}(?:,\d{3})*)\s*k',  # 50 to 80k (group k)
     ]
     
     for pattern in patterns:

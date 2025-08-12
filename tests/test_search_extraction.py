@@ -12,10 +12,10 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.utils.job_link_processor import JobLinkProcessor
-from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
-from src.config.config_manager import ConfigurationManager
-from src.data.models import JobListing
+from backend.src.utils.job_link_processor import JobLinkProcessor
+from backend.src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
+from backend.src.config.config_manager import ConfigurationManager
+from backend.src.data.models import JobListing
 
 
 def test_linkedin_search_extraction():
@@ -72,13 +72,31 @@ def test_linkedin_search_extraction():
         
         print("-" * 60)
     
-    return job_links
+    # Note: Test function should not return values
+    # job_links are processed above for demonstration
 
 
-def test_ai_analysis_on_extracted_jobs(job_links):
+def test_ai_analysis_on_extracted_jobs():
     """Test AI analysis on the extracted jobs."""
     print("\n🤖 Testing AI Analysis on Extracted Jobs")
     print("=" * 60)
+    
+    # First extract job links using the same method as test_linkedin_search_extraction
+    from backend.src.utils.job_link_processor import JobLinkProcessor
+    
+    search_urls = [
+        "https://www.linkedin.com/jobs/search/?currentJobId=4271057209&geoId=103644278&keywords=entry%20level%20software%20engineer&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true&start=25"
+    ]
+    
+    processor = JobLinkProcessor()
+    job_links = []
+    
+    try:
+        job_links = processor.process_job_links(search_urls)
+        print(f"✅ Extracted {len(job_links)} jobs for AI analysis")
+    except Exception as e:
+        print(f"❌ Failed to extract jobs: {e}")
+        return
     
     if not job_links:
         print("❌ No jobs extracted, skipping AI analysis")

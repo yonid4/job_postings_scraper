@@ -12,7 +12,7 @@ from datetime import datetime
 from supabase import Client
 
 # Import the auto profile manager
-from src.data.auto_profile_manager import AutoProfileManager, ProfileCreationResult
+from backend.src.data.auto_profile_manager import AutoProfileManager, ProfileCreationResult
 
 logger = logging.getLogger(__name__)
 

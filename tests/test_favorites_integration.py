@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 # Add the src directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from data.supabase_manager import SupabaseManager, FavoriteListing
+from backend.src.data.supabase_manager import SupabaseManager, FavoriteListing
 
 load_dotenv()
 
