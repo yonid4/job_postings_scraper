@@ -3,7 +3,7 @@
 ## Project Status Overview
 **Current Version**: v3.0.0 (Production Ready)  
 **System Status**: **✅ PRODUCTION READY**  
-**Last Updated**: January 2025  
+**Last Updated**: August 2025  
 **Evolution**: Complete transformation from job automation to AI-powered qualification screening
 
 ## 🎯 System Transformation Summary
@@ -182,6 +182,8 @@ The project has evolved from basic job application automation to a sophisticated
 - ✅ **Comprehensive Testing**: 35+ test files with extensive coverage
 
 ### **Active Development (In Progress)**
+- 🔄 **Architectural Restructure**: Repository re-organization and module boundary hardening; aligning backend `FastAPI` services with frontend apps; dependency cleanup and testing improvements (branch `feature/architectural-restructure`)
+- 🔄 **Next.js Frontend (beta)**: Building `frontend-react` with App Router and Supabase auth; implementing profile, tracker, and search flows toward UI parity with Flask
 - 🔄 **Multi-Site Expansion**: Implementing Indeed and Glassdoor scrapers
 - 🔄 **Mobile Application**: Native mobile app development
 - 🔄 **Advanced Analytics**: Enhanced reporting and insights dashboard
