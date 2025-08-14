@@ -145,6 +145,12 @@ config/secrets.json
 *.key
 *.pem
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+# debug
+=======
+>>>>>>> 3f71a22 (updated .gitignore)
 # Google Sheets API credentials
 credentials.json
 token.json
@@ -206,6 +212,10 @@ flask_session/
 
 # Node modules (if any frontend dependencies)
 node_modules/
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 9d94ca3 (.)
+>>>>>>> 3f71a22 (updated .gitignore)
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -220,6 +230,7 @@ yarn-error.log*
 .coverage
 htmlcov/
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
@@ -251,3 +262,36 @@ local_config.py
 *.tsbuildinfo
 next-env.d.ts
 >>>>>>> parent of 574e774 (added .cursorrules and added .cursorrules to .gitignore)
+=======
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+=======
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Temporary Python files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# Debug and test files
+linkedin_debug_*.png
+linkedin_filter_test_*.log
+test_*.html
+debug_*.html
+
+# Local development files
+local_settings.py
+local_config.py
+>>>>>>> parent of 9d94ca3 (.)
+>>>>>>> 3f71a22 (updated .gitignore)
