@@ -78,12 +78,6 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
       icon: TrendingUp,
       active: pathname === "/tracker",
     },
-    {
-      title: "Applications",
-      href: "/applications",
-      icon: FileText,
-      active: pathname === "/applications",
-    },
   ]
 
   const guestNavigationItems = [
@@ -146,7 +140,7 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
                   <SidebarGroupContent>
                     <SidebarMenu>
                       <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton asChild isActive={pathname === "/profile"}>
                           <Link href="/profile">
                             <GraduationCap className="h-4 w-4" />
                             <span>My Profile</span>
@@ -154,7 +148,7 @@ export function BaseLayout({ children, title, showSidebar = true }: BaseLayoutPr
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton asChild isActive={pathname === "/settings"}>
                           <Link href="/settings">
                             <Settings className="h-4 w-4" />
                             <span>Settings</span>

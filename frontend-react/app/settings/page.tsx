@@ -35,29 +35,19 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { flashMessage } from "@/components/flash-message"
-
-interface ResumeStatus {
-  has_resume: boolean
-  filename?: string
-  file_type?: string
-  file_size?: number
-  uploaded_at?: string
-  is_processed?: boolean
-}
-
-interface UserSettings {
-  score_threshold: number
-}
+import { useUserSettings } from "@/hooks/useUserSettings"
+import { useResume } from "@/hooks/useResume"
 
 export default function SettingsPage() {
+  const { settings, loading: settingsLoading, saveSettings } = useUserSettings()
+  const { resumeStatus, loading: resumeLoading, uploadResume, deleteResume, refetch: refetchResume } = useResume()
+  
   const [scoreThreshold, setScoreThreshold] = useState(70)
   const [isEditingThreshold, setIsEditingThreshold] = useState(false)
   const [tempThreshold, setTempThreshold] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [resumeStatus, setResumeStatus] = useState<ResumeStatus | null>(null)
-  const [isLoadingResume, setIsLoadingResume] = useState(true)
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
@@ -65,71 +55,20 @@ export default function SettingsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadCurrentSettings()
-    loadResumeStatus()
-  }, [])
-
-  const loadCurrentSettings = async () => {
-    try {
-      const response = await fetch("/api/user-settings")
-      
-      if (!response.ok) {
-        throw new Error(`Failed to load settings: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      if (data.score_threshold !== undefined) {
-        setScoreThreshold(data.score_threshold)
-      }
-    } catch (error) {
-      console.error("Error loading settings:", error)
-      // Keep default threshold value
+    if (settings) {
+      setScoreThreshold(settings.score_threshold)
     }
-  }
+  }, [settings])
 
-  const loadResumeStatus = async () => {
-    setIsLoadingResume(true)
-    try {
-      const response = await fetch("/resume/status")
-      
-      if (!response.ok) {
-        throw new Error(`Failed to load resume status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        setResumeStatus(data.status)
-      } else {
-        throw new Error(data.error || "Failed to load resume status")
-      }
-    } catch (error) {
-      console.error("Error loading resume status:", error)
-      flashMessage.show("Failed to load resume status", "error")
-    } finally {
-      setIsLoadingResume(false)
-    }
-  }
 
   const handleSaveSettings = async () => {
     setIsSaving(true)
     try {
-      const response = await fetch("/api/user-settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          score_threshold: scoreThreshold,
-        }),
+      const result = await saveSettings({
+        score_threshold: scoreThreshold,
+        job_limit: settings?.job_limit || 25,
       })
-
-      const data = await response.json()
-      if (data.success) {
-        flashMessage.show("Settings saved successfully!", "success")
-      } else {
-        throw new Error(data.error || "Failed to save settings")
-      }
+      flashMessage.show(result.message, "success")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save settings"
       flashMessage.show(message, "error")
@@ -228,9 +167,6 @@ export default function SettingsPage() {
     setIsUploading(true)
     setUploadProgress(0)
 
-    const formData = new FormData()
-    formData.append("resume", selectedFile)
-
     try {
       // Simulate upload progress
       const progressInterval = setInterval(() => {
@@ -243,24 +179,15 @@ export default function SettingsPage() {
         })
       }, 200)
 
-      const response = await fetch("/resume/upload", {
-        method: "POST",
-        body: formData,
-      })
-
+      const result = await uploadResume(selectedFile)
+      
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      const data = await response.json()
-      if (data.success) {
-        flashMessage.show(data.message || "Resume uploaded successfully!", "success")
-        setSelectedFile(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-        await loadResumeStatus()
-      } else {
-        throw new Error(data.error || "Upload failed")
+      flashMessage.show(result.message, "success")
+      setSelectedFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed"
@@ -273,17 +200,8 @@ export default function SettingsPage() {
 
   const handleDeleteResume = async () => {
     try {
-      const response = await fetch("/resume/delete", {
-        method: "DELETE",
-      })
-
-      const data = await response.json()
-      if (data.success) {
-        flashMessage.show("Resume deleted successfully", "success")
-        await loadResumeStatus()
-      } else {
-        throw new Error(data.error || "Failed to delete resume")
-      }
+      const result = await deleteResume()
+      flashMessage.show(result.message, "success")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete resume"
       flashMessage.show(message, "error")
@@ -549,7 +467,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Current Resume Status */}
-                  {!isLoadingResume && resumeStatus && (
+                  {!resumeLoading && resumeStatus && (
                     <AnimatePresence>
                       {resumeStatus.has_resume ? (
                         <motion.div
@@ -648,7 +566,7 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <h6 className="text-sm font-medium mb-2">Resume Status</h6>
-                    {isLoadingResume ? (
+                    {resumeLoading ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading...

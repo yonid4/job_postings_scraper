@@ -9,20 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Save, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { flashMessage } from "@/components/flash-message"
-
-export interface ProfileData {
-  yearsOfExperience?: number
-  experienceLevel: string
-  educationLevel: string
-  fieldOfStudy?: string
-  skillsTechnologies: string[]
-  workArrangementPreference: string
-  preferredLocations: string[]
-  salaryMin?: number
-  salaryMax?: number
-}
+import { useProfile, ProfileData } from "@/hooks/useProfile"
 
 export default function ProfilePage() {
+  const { profile, loading: isLoading, error, saveProfile } = useProfile()
   const [profileData, setProfileData] = useState<ProfileData>({
     experienceLevel: "",
     educationLevel: "",
@@ -30,42 +20,25 @@ export default function ProfilePage() {
     workArrangementPreference: "",
     preferredLocations: [],
   })
-  const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [completionPercentage, setCompletionPercentage] = useState(0)
   const { toast } = useToast()
 
   useEffect(() => {
-    loadProfileData()
-  }, [])
+    if (profile) {
+      setProfileData(profile)
+    }
+  }, [profile])
 
   useEffect(() => {
     calculateCompletion()
   }, [profileData])
 
-  const loadProfileData = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/profile")
-      
-      if (!response.ok) {
-        throw new Error(`Failed to load profile: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.success && data.profile) {
-        setProfileData(data.profile)
-      } else {
-        throw new Error(data.error || "Failed to load profile data")
-      }
-    } catch (error) {
-      console.error("Error loading profile data:", error)
-      flashMessage.show("Failed to load profile data", "error")
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    if (error) {
+      flashMessage.show(`Profile error: ${error}`, "error")
     }
-  }
+  }, [error])
 
   const calculateCompletion = () => {
     const requiredFields = ["experienceLevel", "educationLevel", "skillsTechnologies", "workArrangementPreference"]
@@ -113,27 +86,9 @@ export default function ProfilePage() {
         throw new Error("Please enter your skills and technologies")
       }
 
-      // Save profile via API
-      const response = await fetch("/api/profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to save profile: ${response.status}`)
-      }
-
-      const result = await response.json()
-      
-      if (result.success) {
-        setProfileData(data)
-        flashMessage.show(result.message || "Profile updated successfully!", "success")
-      } else {
-        throw new Error(result.error || "Failed to save profile")
-      }
+      // Save profile via hook
+      const result = await saveProfile(data)
+      flashMessage.show(result.message, "success")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save profile"
       flashMessage.show(message, "error")

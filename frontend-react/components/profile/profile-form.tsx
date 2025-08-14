@@ -34,21 +34,38 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormProps) {
+  const [locationsInput, setLocationsInput] = React.useState("")
+  const [skillsInput, setSkillsInput] = React.useState("")
+  
   const form = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
     defaultValues: data,
   })
 
-  // Update form when data changes
+  // Update form and input fields when data changes
   React.useEffect(() => {
     form.reset(data)
+    setLocationsInput(data.preferredLocations?.join(", ") || "")
+    setSkillsInput(data.skillsTechnologies?.join(", ") || "")
   }, [data, form])
 
   const onSubmit = async (formData: ProfileData) => {
-    await onSave(formData)
+    // Ensure locations are processed before saving
+    const locations = locationsInput
+      .split(",")
+      .map((location) => location.trim())
+      .filter((location) => location.length > 0)
+    
+    const finalData = {
+      ...formData,
+      preferredLocations: locations,
+    }
+    
+    await onSave(finalData)
   }
 
   const handleSkillsChange = (value: string) => {
+    setSkillsInput(value)
     const skills = value
       .split(",")
       .map((skill) => skill.trim())
@@ -57,11 +74,18 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
   }
 
   const handleLocationsChange = (value: string) => {
-    const locations = value
+    setLocationsInput(value)
+  }
+
+  const handleLocationsBlur = () => {
+    // Process locations when user finishes editing
+    const locations = locationsInput
       .split(",")
       .map((location) => location.trim())
       .filter((location) => location.length > 0)
     form.setValue("preferredLocations", locations)
+    // Clean up the display
+    setLocationsInput(locations.join(", "))
   }
 
   if (isLoading) {
@@ -192,7 +216,7 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
                     <Textarea
                       placeholder="Enter your skills and technologies, separated by commas (e.g., Python, JavaScript, React, AWS)"
                       className="min-h-[100px]"
-                      value={field.value?.join(", ") || ""}
+                      value={skillsInput}
                       onChange={(e) => handleSkillsChange(e.target.value)}
                     />
                   </FormControl>
@@ -249,8 +273,9 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
                     <FormControl>
                       <Input
                         placeholder="e.g., San Francisco, CA, Remote"
-                        value={field.value?.join(", ") || ""}
+                        value={locationsInput}
                         onChange={(e) => handleLocationsChange(e.target.value)}
+                        onBlur={handleLocationsBlur}
                       />
                     </FormControl>
                     <FormDescription>Enter preferred locations, separated by commas.</FormDescription>
