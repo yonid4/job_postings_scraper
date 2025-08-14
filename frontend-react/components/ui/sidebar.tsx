@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
 
 const Sidebar = React.forwardRef<
@@ -106,18 +107,22 @@ const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
     isActive?: boolean
+    asChild?: boolean
   }
->(({ className, isActive = false, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
-      isActive && "bg-accent text-accent-foreground",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, isActive = false, asChild = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button"
+  return (
+    <Comp
+      className={cn(
+        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+        isActive && "bg-accent text-accent-foreground",
+        className
+      )}
+      ref={ref}
+      {...props}
+    />
+  )
+})
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarProvider = React.forwardRef<
