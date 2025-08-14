@@ -1,15 +1,4 @@
 {
-<<<<<<< HEAD
-    "buildCommand": "cd frontend-react && npm ci && npm run build",
-    "outputDirectory": "frontend-react/.next",
-    "installCommand": "cd frontend-react && npm ci",
-    "framework": "nextjs",
-    "functions": {
-      "frontend-react/app/**": {
-        "runtime": "nodejs20.x"
-      }
-    }
-=======
   "buildCommand": "cd frontend-react && npm ci && npm run build",
   "outputDirectory": "frontend-react/.next", 
   "installCommand": "cd frontend-react && npm ci",
@@ -19,5 +8,4 @@
       "runtime": "nodejs20.x"
     }
   }
->>>>>>> e8a8142 (updated vercel.json)
 }
