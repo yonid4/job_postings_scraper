@@ -1,6 +1,11 @@
 {
     "buildCommand": "cd frontend-react && npm ci && npm run build",
-    "outputDirectory": "frontend-react/.next", 
+    "outputDirectory": "frontend-react/.next",
     "installCommand": "cd frontend-react && npm ci",
-    "framework": "nextjs"
-  }
+    "framework": "nextjs",
+    "functions": {
+      "frontend-react/app/**": {
+        "runtime": "nodejs20.x"
+      }
+    }
+}
