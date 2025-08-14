@@ -198,9 +198,6 @@ applications.db
 job_listings.db
 scraping_sessions.db 
 
-# Cursor
-.cursorrules
-
 # Sessions
 sessions/
 
@@ -223,6 +220,7 @@ yarn-error.log*
 .coverage
 htmlcov/
 
+<<<<<<< HEAD
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
@@ -248,3 +246,8 @@ debug_*.html
 # Local development files
 local_settings.py
 local_config.py
+=======
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+>>>>>>> parent of 574e774 (added .cursorrules and added .cursorrules to .gitignore)
