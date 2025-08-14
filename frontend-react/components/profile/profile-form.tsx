@@ -132,7 +132,7 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Experience Level *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} key={`experience-${field.value}`}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select experience level" />
@@ -160,7 +160,7 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Education Level *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} key={`education-${field.value}`}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select education level" />
@@ -246,7 +246,7 @@ export function ProfileForm({ data, onSave, isLoading, isSaving }: ProfileFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Work Arrangement *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} key={`work-${field.value}`}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select work arrangement" />
