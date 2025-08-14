@@ -118,7 +118,10 @@ export function useProfile() {
       
       const { data, error } = await supabase
         .from('user_profiles')
-        .upsert(profilePayload)
+        .upsert(profilePayload, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        })
         .select()
         .single()
       
