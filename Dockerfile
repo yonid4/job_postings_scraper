@@ -29,33 +29,17 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-f
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install additional scraping dependencies  
 RUN pip install selenium beautifulsoup4 requests
 
-# Copy application code (api, src folders)
-COPY api/ ./api/
-COPY src/ ./src/
+# Copy application code (api, src folders from backend directory)
+COPY backend/api/ ./api/
+COPY backend/src/ ./src/
 
-# Create a simple startup script that debugs the PORT variable
-RUN echo '#!/bin/bash\n\
-echo "=== Railway Environment Debug ==="\n\
-echo "PORT environment variable: [$PORT]"\n\
-echo "All environment variables:"\n\
-printenv | grep -E "(PORT|RAILWAY)" || echo "No PORT/RAILWAY vars found"\n\
-echo "================================"\n\
-\n\
-# Set default port if PORT is empty or invalid\n\
-if [ -z "$PORT" ] || ! [[ "$PORT" =~ ^[0-9]+$ ]]; then\n\
-    echo "PORT is empty or invalid, using 8000"\n\
-    export PORT=8000\n\
-fi\n\
-\n\
-echo "Starting uvicorn on port: $PORT"\n\
-exec uvicorn api.working_main:app --host 0.0.0.0 --port $PORT\n\
-' > start.sh && chmod +x start.sh
+# Application files copied, ready to start
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -64,6 +48,5 @@ ENV DISPLAY=:99
 # Expose port (Railway will provide $PORT environment variable)
 EXPOSE 8000
 
-# Simple startup - no port variables  
-ENTRYPOINT ["uvicorn"]
-CMD ["api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Simple startup with hardcoded port
+CMD ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
