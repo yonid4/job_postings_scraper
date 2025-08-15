@@ -107,9 +107,96 @@ async def debug_test():
         "timestamp": "2024-01-01T00:00:00Z"
     }
 
+@app.post("/api/jobs/search")
+async def search_jobs(search_params: dict):
+    """Search for jobs using the available scrapers"""
+    if not scraper:
+        return {"error": "Scraper not available", "success": False}
+    
+    try:
+        # Extract search parameters
+        keywords = search_params.get("keywords", "")
+        location = search_params.get("location", "")
+        website = search_params.get("website", "linkedin")
+        job_limit = search_params.get("jobLimit", 25)
+        
+        if not keywords or not location:
+            return {
+                "error": "Keywords and location are required",
+                "success": False
+            }
+        
+        # Prepare search parameters for scraper
+        scraper_params = {
+            "keywords": keywords,
+            "location": location,
+            "job_limit": job_limit,
+            "date_posted": search_params.get("datePosted", "any"),
+            "experience_level": search_params.get("experienceLevel", []),
+            "work_arrangement": search_params.get("workArrangement", []),
+            "job_type": search_params.get("jobType", [])
+        }
+        
+        # Use the LinkedIn scraper to get real jobs
+        print(f"🔍 Searching for jobs: {keywords} in {location}")
+        jobs_result = scraper.scrape_jobs(scraper_params)
+        
+        if not jobs_result or not jobs_result.success:
+            return {
+                "error": jobs_result.error_message if jobs_result else "Scraping failed",
+                "success": False,
+                "requires_manual_intervention": True
+            }
+        
+        # Convert JobListing objects to the expected format
+        results = []
+        for job in jobs_result.jobs:
+            # Basic job analysis score (simplified for now)
+            score = 75  # Default score, could be enhanced with AI analysis
+            
+            results.append({
+                "id": job.id,
+                "job_title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "job_url": job.linkedin_url or job.indeed_url or job.glassdoor_url,
+                "score": score,
+                "reasoning": f"Found {job.title} position at {job.company}",
+                "key_skills": [],  # Could be extracted from description
+                "strengths": ["Position matches search criteria"],
+                "concerns": [],
+                "required_experience": job.experience_required or "Not specified",
+                "education_requirements": job.education_required or "Not specified",
+                "date_posted": job.date_posted.isoformat() if job.date_posted else None,
+                "salary_range": f"${job.salary_min:,} - ${job.salary_max:,}" if job.salary_min and job.salary_max else "Not specified"
+            })
+        
+        return {
+            "success": True,
+            "jobs_count": len(results),
+            "total_jobs": len(results),
+            "results": results,
+            "strategy_info": {
+                "method": "LinkedIn Scraper",
+                "estimated_time": "10-30 seconds",
+                "performance_impact": "Medium",
+                "reason": "Using enhanced LinkedIn scraper with session management"
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Search error: {str(e)}")
+        return {
+            "error": f"Search failed: {str(e)}",
+            "success": False,
+            "requires_manual_intervention": True
+        }
+
 @app.get("/api/jobs/tracker")
 async def jobs_tracker():
     """Jobs tracker endpoint - returns sample data for testing"""
+    # For now, keep sample data for tracker since it's a different feature
+    # In the future, this could load saved jobs from database
     sample_jobs = [
         {
             "id": "1",

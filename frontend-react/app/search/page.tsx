@@ -140,54 +140,48 @@ export default function SearchPage() {
     setSearchStats(null)
 
     try {
-      // Simulate API call - replace with actual implementation
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Mock response - replace with actual API call
-      const mockResults: JobResult[] = [
-        {
-          id: "1",
-          job_title: "Senior Software Engineer",
-          company: "TechCorp Inc.",
-          location: "San Francisco, CA",
-          job_url: "https://linkedin.com/jobs/123",
-          score: 85,
-          reasoning: "Strong match based on your React and Node.js experience",
-          key_skills: ["React", "Node.js", "TypeScript", "AWS"],
-          strengths: ["Matches your tech stack", "Senior level position", "Great company culture"],
-          concerns: ["Requires 5+ years experience", "On-site position"],
-          required_experience: "5+ years",
-          education_requirements: "Bachelor's degree preferred",
-          salary_range: "$120,000 - $160,000",
+      // Call the real backend API
+      const response = await fetch("/api/jobs/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          id: "2",
-          job_title: "Frontend Developer",
-          company: "StartupXYZ",
-          location: "Remote",
-          job_url: "https://linkedin.com/jobs/456",
-          score: 72,
-          reasoning: "Good match for frontend skills, remote work available",
-          key_skills: ["React", "JavaScript", "CSS", "Git"],
-          strengths: ["Remote work option", "Growing startup", "Modern tech stack"],
-          concerns: ["Lower salary range", "Early stage company"],
-          required_experience: "3+ years",
-          education_requirements: "Degree or equivalent experience",
-          salary_range: "$80,000 - $110,000",
-        },
-      ]
-
-      setSearchResults(mockResults)
-      setSearchStats({
-        total: mockResults.length,
-        qualified: mockResults.filter((job) => job.score >= 60).length,
-        excellent: mockResults.filter((job) => job.score >= 80).length,
-        avgScore: Math.round(mockResults.reduce((sum, job) => sum + job.score, 0) / mockResults.length),
+        body: JSON.stringify(filters),
       })
 
-      flashMessage.show(`Successfully found ${mockResults.length} jobs!`, "success")
+      const data: SearchResponse = await response.json()
+
+      if (!data.success) {
+        if (data.requires_manual_intervention) {
+          flashMessage.show(
+            "Search encountered CAPTCHA or rate limiting. Please try again later or use different filters.",
+            "error"
+          )
+        } else {
+          flashMessage.show(data.error || "Search failed. Please try again.", "error")
+        }
+        return
+      }
+
+      const results = data.results || []
+      setSearchResults(results)
+      setSearchStats({
+        total: results.length,
+        qualified: results.filter((job) => job.score >= filters.qualificationThreshold).length,
+        excellent: results.filter((job) => job.score >= 80).length,
+        avgScore: results.length > 0 ? Math.round(results.reduce((sum, job) => sum + job.score, 0) / results.length) : 0,
+      })
+
+      flashMessage.show(`Successfully found ${results.length} jobs!`, "success")
+      
+      // Show strategy info if available
+      if (data.strategy_info) {
+        console.log("Search strategy:", data.strategy_info)
+      }
+      
     } catch (error) {
-      flashMessage.show("Search failed. Please try again.", "error")
+      console.error("Search error:", error)
+      flashMessage.show("Search failed. Please check your connection and try again.", "error")
     } finally {
       setIsSearching(false)
     }
