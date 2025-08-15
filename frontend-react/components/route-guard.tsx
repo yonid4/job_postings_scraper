@@ -9,12 +9,12 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard({ children }: RouteGuardProps) {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   // Define which routes are public (accessible without authentication)
-  const publicRoutes = ["/", "/auth/login", "/auth/register", "/forgot_password"]
+  const publicRoutes = ["/", "/auth/login", "/auth/register", "/auth/callback", "/forgot_password"]
   
   // Define which routes authenticated users should be redirected from
   const authRedirectRoutes = ["/auth/login", "/auth/register"]
@@ -29,10 +29,14 @@ export function RouteGuard({ children }: RouteGuardProps) {
       // Redirect unauthenticated users to login
       router.push("/auth/login")
     } else if (isAuthenticated && shouldRedirectAuth) {
-      // Redirect authenticated users away from login/register
-      router.push("/")
+      // Only redirect authenticated users away from auth pages if their email is verified
+      // This prevents interrupting the registration flow for unverified users
+      const isEmailVerified = user?.email_verified ?? false
+      if (isEmailVerified) {
+        router.push("/")
+      }
     }
-  }, [isAuthenticated, loading, pathname, router])
+  }, [isAuthenticated, loading, pathname, router, user])
 
   // Show loading state while auth is being determined
   if (loading) {
@@ -44,8 +48,10 @@ export function RouteGuard({ children }: RouteGuardProps) {
   }
 
   // For authenticated users trying to access auth pages, show loading while redirecting
+  // Only redirect if email is verified
   const shouldRedirectAuth = authRedirectRoutes.includes(pathname)
-  if (isAuthenticated && shouldRedirectAuth) {
+  const isEmailVerified = user?.email_verified ?? false
+  if (isAuthenticated && shouldRedirectAuth && isEmailVerified) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

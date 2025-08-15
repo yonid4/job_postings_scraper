@@ -129,6 +129,7 @@ export default function RegisterPage() {
     }
   }
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -145,6 +146,7 @@ export default function RegisterPage() {
           data: {
             full_name: formData.fullName,
           },
+          emailRedirectTo: `https://job-os.vercel.app/auth/callback`,
         },
       })
 
@@ -167,7 +169,7 @@ export default function RegisterPage() {
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
-        window.location.href = "/login"
+        window.location.href = "/auth/login"
       }, 3000)
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again."
@@ -479,7 +481,7 @@ export default function RegisterPage() {
             <div className="text-center pt-4 border-t">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
                   Login here
                 </Link>
               </p>
