@@ -51,5 +51,5 @@ ENV DISPLAY=:99
 # Expose port (Railway will provide $PORT environment variable)
 EXPOSE 8000
 
-# Add startup debugging and use Railway's PORT if available
-CMD ["sh", "-c", "echo 'Container starting...' && ls -la /app && echo 'Files in api:' && ls -la /app/api && echo 'Files in src:' && ls -la /app/src && uvicorn api.working_main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Simple startup - Railway will set PORT environment variable
+CMD ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
