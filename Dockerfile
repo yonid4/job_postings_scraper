@@ -1,5 +1,9 @@
-# Railway deployment Dockerfile - Clean build
+# Railway deployment Dockerfile - Clean build v2
 FROM python:3.9-slim
+
+# Force rebuild
+ARG BUILDTIME=unknown
+RUN echo "Build time: $BUILDTIME"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -29,13 +33,13 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-f
 WORKDIR /app
 
 # Copy and install Python dependencies
-COPY backend/requirements.txt .
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install selenium beautifulsoup4 requests
 
 # Copy backend application code only
-COPY backend/api/ ./api/
-COPY backend/src/ ./src/
+COPY backend/api api
+COPY backend/src src
 
 # Create Python module files
 RUN touch ./api/__init__.py ./src/__init__.py
