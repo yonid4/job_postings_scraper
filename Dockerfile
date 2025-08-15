@@ -1,7 +1,7 @@
-# Use Python 3.9 slim image - Complete rebuild v3
+# Railway deployment Dockerfile - Clean build
 FROM python:3.9-slim
 
-# Install system dependencies for Chrome and Selenium
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -28,28 +28,24 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-f
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
+# Copy and install Python dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install additional scraping dependencies  
 RUN pip install selenium beautifulsoup4 requests
 
-# Copy application code (api, src folders from backend directory)
+# Copy backend application code only
 COPY backend/api/ ./api/
 COPY backend/src/ ./src/
 
-# Create empty __init__.py files for proper Python module structure
+# Create Python module files
 RUN touch ./api/__init__.py ./src/__init__.py
-
-# Application files copied, ready to start
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
-# Expose port (Railway will provide $PORT environment variable)
+# Expose port
 EXPOSE 8000
 
-# Simple startup - Railway will set PORT environment variable
+# Start command
 CMD ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
