@@ -38,6 +38,7 @@ RUN pip install selenium beautifulsoup4 requests
 # Copy application code (api, src folders)
 COPY api/ ./api/
 COPY src/ ./src/
+COPY start.py ./start.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -46,5 +47,5 @@ ENV DISPLAY=:99
 # Expose port (Railway will provide $PORT environment variable)
 EXPOSE 8000
 
-# Start command with dynamic port support
-CMD sh -c "uvicorn api.working_main:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Start command with Python script that handles port
+CMD ["python3", "start.py"]
