@@ -38,7 +38,38 @@ RUN pip install selenium beautifulsoup4 requests
 # Copy application code (api, src folders)
 COPY api/ ./api/
 COPY src/ ./src/
-COPY start.py ./start.py
+
+# Create startup script inline
+RUN echo '#!/usr/bin/env python3\n\
+import os\n\
+import subprocess\n\
+import sys\n\
+\n\
+def main():\n\
+    port = os.environ.get("PORT", "8000")\n\
+    try:\n\
+        port_num = int(port)\n\
+        if port_num < 1 or port_num > 65535:\n\
+            raise ValueError("Port out of range")\n\
+    except ValueError:\n\
+        print(f"Warning: Invalid PORT {port}, using default 8000")\n\
+        port = "8000"\n\
+    \n\
+    cmd = ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", str(port)]\n\
+    print(f"Starting uvicorn on port {port}...")\n\
+    print(f"Command: {\" \".join(cmd)}")\n\
+    \n\
+    try:\n\
+        subprocess.run(cmd, check=True)\n\
+    except subprocess.CalledProcessError as e:\n\
+        print(f"Error starting uvicorn: {e}")\n\
+        sys.exit(1)\n\
+    except KeyboardInterrupt:\n\
+        print("Shutting down...")\n\
+        sys.exit(0)\n\
+\n\
+if __name__ == "__main__":\n\
+    main()' > start.py && chmod +x start.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
