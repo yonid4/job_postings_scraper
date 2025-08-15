@@ -1,4 +1,4 @@
-# Use Python 3.9 slim image - Railway rebuild v2
+# Use Python 3.9 slim image - Complete rebuild v3
 FROM python:3.9-slim
 
 # Install system dependencies for Chrome and Selenium
@@ -64,5 +64,6 @@ ENV DISPLAY=:99
 # Expose port (Railway will provide $PORT environment variable)
 EXPOSE 8000
 
-# Start command with hardcoded port (Railway will proxy to external port)
-CMD ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Simple startup - no port variables  
+ENTRYPOINT ["uvicorn"]
+CMD ["api.working_main:app", "--host", "0.0.0.0", "--port", "8000"]
