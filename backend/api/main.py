@@ -8,14 +8,19 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
     from src.config.config_manager import AISettings, UserProfile
-    from src.scrapers.linkedin_scraper_enhanced import LinkedInScraperEnhanced
-except ImportError:
+    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper as LinkedInScraperEnhanced
+    from src.scrapers.linkedin_api_scraper import LinkedInAPIScraper
+    from src.scrapers.base_scraper import ScrapingConfig
+except ImportError as e:
     # Fallback if import fails
+    print(f"Import error: {e}")
     QualificationAnalyzer = None
     AnalysisRequest = None
     AISettings = None
     UserProfile = None
     LinkedInScraperEnhanced = None
+    LinkedInAPIScraper = None
+    ScrapingConfig = None
 
 app = FastAPI(title="Job Qualification API", version="1.0.0")
 
@@ -27,8 +32,36 @@ try:
 except:
     analyzer = None
 
-# Initialize scraper
-scraper = LinkedInScraperEnhanced() if LinkedInScraperEnhanced else None
+# Initialize both scrapers
+enhanced_scraper = None
+api_scraper = None
+
+try:
+    if LinkedInScraperEnhanced and ScrapingConfig:
+        config = ScrapingConfig()
+        enhanced_scraper = LinkedInScraperEnhanced(config)
+    
+    if LinkedInAPIScraper and ScrapingConfig:
+        config = ScrapingConfig()
+        api_scraper = LinkedInAPIScraper(config)
+except Exception as e:
+    print(f"Warning: Could not initialize scrapers: {e}")
+
+def choose_scraper(search_params):
+    """Choose between API and Enhanced scraper based on search complexity"""
+    has_advanced_filters = (
+        search_params.get("datePosted", "any") != "any" or
+        search_params.get("experienceLevel", []) or
+        search_params.get("workArrangement", []) or
+        search_params.get("jobType", [])
+    )
+    
+    if has_advanced_filters and enhanced_scraper:
+        return enhanced_scraper, "WebDriver Mode"
+    elif api_scraper:
+        return api_scraper, "Fast API Mode"
+    else:
+        return None, "No scraper available"
 
 @app.get("/health")
 async def health_check():
@@ -103,15 +136,21 @@ async def debug_test():
         "status": "ok",
         "message": "Debug endpoint working",
         "analyzer_available": analyzer is not None,
-        "scraper_available": scraper is not None,
+        "enhanced_scraper_available": enhanced_scraper is not None,
+        "api_scraper_available": api_scraper is not None,
+        "imports": {
+            "LinkedInScraperEnhanced": LinkedInScraperEnhanced is not None,
+            "LinkedInAPIScraper": LinkedInAPIScraper is not None,
+            "ScrapingConfig": ScrapingConfig is not None
+        },
         "timestamp": "2024-01-01T00:00:00Z"
     }
 
 @app.post("/api/jobs/search")
 async def search_jobs(search_params: dict):
     """Search for jobs using the available scrapers"""
-    if not scraper:
-        return {"error": "Scraper not available", "success": False}
+    if not enhanced_scraper and not api_scraper:
+        return {"error": "No scrapers available", "success": False}
     
     try:
         # Extract search parameters
@@ -137,9 +176,14 @@ async def search_jobs(search_params: dict):
             "job_type": search_params.get("jobType", [])
         }
         
-        # Use the LinkedIn scraper to get real jobs
-        print(f"🔍 Searching for jobs: {keywords} in {location}")
-        jobs_result = scraper.scrape_jobs(scraper_params)
+        # Choose the appropriate scraper based on search complexity
+        selected_scraper, strategy_method = choose_scraper(search_params)
+        
+        if not selected_scraper:
+            return {"error": "No scraper available", "success": False}
+        
+        print(f"🔍 Searching for jobs: {keywords} in {location} using {strategy_method}")
+        jobs_result = selected_scraper.scrape_jobs(scraper_params)
         
         if not jobs_result or not jobs_result.success:
             return {

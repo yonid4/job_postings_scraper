@@ -24,7 +24,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
-from backend.src.utils.logger import JobAutomationLogger
+from .logger import JobAutomationLogger
 
 
 class SessionManager:
@@ -574,7 +574,7 @@ class SessionManager:
             True if challenge was handled successfully, False otherwise
         """
         try:
-            from backend.src.utils.captcha_handler import captcha_handler, CAPTCHAStatus
+            from .captcha_handler import captcha_handler, CAPTCHAStatus
             
             self.logger.logger.info("🔒 SECURITY CHALLENGE DETECTED")
             
