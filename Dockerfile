@@ -28,21 +28,16 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-f
 # Set working directory
 WORKDIR /app
 
-# Debug: List available files
-RUN ls -la /
-
-# Copy backend requirements and install Python dependencies
-COPY ./backend/requirements.txt .
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install additional scraping dependencies
+# Install additional scraping dependencies  
 RUN pip install selenium beautifulsoup4 requests
 
-# Debug: List files in root context
-RUN echo "=== Files in build context ===" && ls -la
-
-# Copy backend application code  
-COPY ./backend/ .
+# Copy application code (api, src folders)
+COPY api/ ./api/
+COPY src/ ./src/
 
 # Set environment variables
 ENV PYTHONPATH=/app
