@@ -39,37 +39,23 @@ RUN pip install selenium beautifulsoup4 requests
 COPY api/ ./api/
 COPY src/ ./src/
 
-# Create startup script inline
-RUN echo '#!/usr/bin/env python3\n\
-import os\n\
-import subprocess\n\
-import sys\n\
+# Create a simple startup script that debugs the PORT variable
+RUN echo '#!/bin/bash\n\
+echo "=== Railway Environment Debug ==="\n\
+echo "PORT environment variable: [$PORT]"\n\
+echo "All environment variables:"\n\
+printenv | grep -E "(PORT|RAILWAY)" || echo "No PORT/RAILWAY vars found"\n\
+echo "================================"\n\
 \n\
-def main():\n\
-    port = os.environ.get("PORT", "8000")\n\
-    try:\n\
-        port_num = int(port)\n\
-        if port_num < 1 or port_num > 65535:\n\
-            raise ValueError("Port out of range")\n\
-    except ValueError:\n\
-        print(f"Warning: Invalid PORT {port}, using default 8000")\n\
-        port = "8000"\n\
-    \n\
-    cmd = ["uvicorn", "api.working_main:app", "--host", "0.0.0.0", "--port", str(port)]\n\
-    print(f"Starting uvicorn on port {port}...")\n\
-    print(f"Command: {\" \".join(cmd)}")\n\
-    \n\
-    try:\n\
-        subprocess.run(cmd, check=True)\n\
-    except subprocess.CalledProcessError as e:\n\
-        print(f"Error starting uvicorn: {e}")\n\
-        sys.exit(1)\n\
-    except KeyboardInterrupt:\n\
-        print("Shutting down...")\n\
-        sys.exit(0)\n\
+# Set default port if PORT is empty or invalid\n\
+if [ -z "$PORT" ] || ! [[ "$PORT" =~ ^[0-9]+$ ]]; then\n\
+    echo "PORT is empty or invalid, using 8000"\n\
+    export PORT=8000\n\
+fi\n\
 \n\
-if __name__ == "__main__":\n\
-    main()' > start.py && chmod +x start.py
+echo "Starting uvicorn on port: $PORT"\n\
+exec uvicorn api.working_main:app --host 0.0.0.0 --port $PORT\n\
+' > start.sh && chmod +x start.sh
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -78,5 +64,5 @@ ENV DISPLAY=:99
 # Expose port (Railway will provide $PORT environment variable)
 EXPOSE 8000
 
-# Start command with Python script that handles port
-CMD ["python3", "start.py"]
+# Start command with debug script
+CMD ["./start.sh"]
