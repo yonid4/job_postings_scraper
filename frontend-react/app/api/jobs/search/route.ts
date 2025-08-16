@@ -4,10 +4,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // URL of your Railway-deployed scraping service
+    // URL of your Render-deployed scraping service
     const SCRAPING_SERVICE_URL = process.env.SCRAPING_SERVICE_URL || 'http://localhost:8000'
     
-    const response = await fetch(`${SCRAPING_SERVICE_URL}/api/jobs/search`, {
+    const response = await fetch(`${SCRAPING_SERVICE_URL}/jobs/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

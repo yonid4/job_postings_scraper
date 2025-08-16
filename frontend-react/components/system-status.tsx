@@ -11,13 +11,14 @@ export function SystemStatus() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // In a real app, this would be a fetch to your API
-        // await fetch('/api/health')
-
-        // Simulating API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        setStatus("online")
+        // Check the actual backend health endpoint
+        const response = await fetch('https://jobos-1.onrender.com/health')
+        
+        if (response.ok) {
+          setStatus("online")
+        } else {
+          setStatus("offline")
+        }
         setLastChecked(new Date().toLocaleTimeString())
       } catch (error) {
         setStatus("offline")
@@ -26,6 +27,10 @@ export function SystemStatus() {
     }
 
     checkStatus()
+    // Check status every 30 seconds
+    const interval = setInterval(checkStatus, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const features = [
