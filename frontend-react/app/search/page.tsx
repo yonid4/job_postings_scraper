@@ -140,10 +140,8 @@ export default function SearchPage() {
     setSearchStats(null)
 
     try {
-      // Call the backend API (local or remote based on env)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
-      console.log("🔗 Using API URL:", `${apiUrl}/api/jobs/search`)
-      const response = await fetch(`${apiUrl}/api/jobs/search`, {
+      // Call the real backend API
+      const response = await fetch("/api/jobs/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

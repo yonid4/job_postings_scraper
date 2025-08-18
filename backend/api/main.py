@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
 
@@ -9,33 +8,21 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from src.ai.qualification_analyzer import QualificationAnalyzer, AnalysisRequest
     from src.config.config_manager import AISettings, UserProfile
-    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper
+    from src.scrapers.linkedin_scraper_enhanced import EnhancedLinkedInScraper as LinkedInScraperEnhanced
     from src.scrapers.linkedin_api_scraper import LinkedInAPIScraper
-    from src.utils.search_strategy_manager import SearchStrategyManager, SearchParameters, SearchMethod
     from src.scrapers.base_scraper import ScrapingConfig
-except ImportError:
+except ImportError as e:
     # Fallback if import fails
+    print(f"Import error: {e}")
     QualificationAnalyzer = None
     AnalysisRequest = None
     AISettings = None
     UserProfile = None
-    EnhancedLinkedInScraper = None
+    LinkedInScraperEnhanced = None
     LinkedInAPIScraper = None
-    SearchStrategyManager = None
-    SearchParameters = None
-    SearchMethod = None
     ScrapingConfig = None
 
 app = FastAPI(title="Job Qualification API", version="1.0.0")
-
-# Add CORS middleware to allow frontend connections
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://job-os.vercel.app"],  # Production frontend only
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Initialize analyzer if available
 try:
@@ -45,36 +32,36 @@ try:
 except:
     analyzer = None
 
-# Initialize search strategy manager
-strategy_manager = SearchStrategyManager() if SearchStrategyManager else None
-
-# Initialize scrapers
+# Initialize both scrapers
 enhanced_scraper = None
 api_scraper = None
 
-if EnhancedLinkedInScraper and ScrapingConfig:
-    try:
-        config = ScrapingConfig(
-            site_name="LinkedIn",
-            base_url="https://www.linkedin.com",
-            search_url_template="https://www.linkedin.com/jobs/search/"
-        )
-        enhanced_scraper = EnhancedLinkedInScraper(config)
-    except Exception as e:
-        print(f"Failed to initialize enhanced scraper: {e}")
-        enhanced_scraper = None
-
-if LinkedInAPIScraper and ScrapingConfig:
-    try:
-        config = ScrapingConfig(
-            site_name="LinkedIn",
-            base_url="https://www.linkedin.com",
-            search_url_template="https://www.linkedin.com/jobs/search/"
-        )
+try:
+    if LinkedInScraperEnhanced and ScrapingConfig:
+        config = ScrapingConfig()
+        enhanced_scraper = LinkedInScraperEnhanced(config)
+    
+    if LinkedInAPIScraper and ScrapingConfig:
+        config = ScrapingConfig()
         api_scraper = LinkedInAPIScraper(config)
-    except Exception as e:
-        print(f"Failed to initialize API scraper: {e}")
-        api_scraper = None
+except Exception as e:
+    print(f"Warning: Could not initialize scrapers: {e}")
+
+def choose_scraper(search_params):
+    """Choose between API and Enhanced scraper based on search complexity"""
+    has_advanced_filters = (
+        search_params.get("datePosted", "any") != "any" or
+        search_params.get("experienceLevel", []) or
+        search_params.get("workArrangement", []) or
+        search_params.get("jobType", [])
+    )
+    
+    if has_advanced_filters and enhanced_scraper:
+        return enhanced_scraper, "WebDriver Mode"
+    elif api_scraper:
+        return api_scraper, "Fast API Mode"
+    else:
+        return None, "No scraper available"
 
 @app.get("/health")
 async def health_check():
@@ -131,12 +118,12 @@ async def analyze_job(job_data: dict):
 @app.post("/api/scraping/linkedin")
 async def scrape_linkedin(search_params: dict):
     """Wrapper around existing LinkedIn scraper"""
-    if not enhanced_scraper:
-        return {"error": "Enhanced scraper not available"}
+    if not scraper:
+        return {"error": "Scraper not available"}
     
     try:
         # Call existing method - EXACT SAME LOGIC
-        jobs = enhanced_scraper.scrape_jobs(search_params)
+        jobs = scraper.scrape_jobs(search_params)
         return {"jobs": jobs, "count": len(jobs) if jobs else 0}
     except Exception as e:
         return {"error": str(e)}
@@ -149,17 +136,21 @@ async def debug_test():
         "status": "ok",
         "message": "Debug endpoint working",
         "analyzer_available": analyzer is not None,
-        "api_scraper_available": api_scraper is not None,
         "enhanced_scraper_available": enhanced_scraper is not None,
-        "strategy_manager_available": strategy_manager is not None,
+        "api_scraper_available": api_scraper is not None,
+        "imports": {
+            "LinkedInScraperEnhanced": LinkedInScraperEnhanced is not None,
+            "LinkedInAPIScraper": LinkedInAPIScraper is not None,
+            "ScrapingConfig": ScrapingConfig is not None
+        },
         "timestamp": "2024-01-01T00:00:00Z"
     }
 
 @app.post("/api/jobs/search")
 async def search_jobs(search_params: dict):
-    """Search for jobs using the available scrapers with intelligent strategy selection"""
-    if not strategy_manager or (not enhanced_scraper and not api_scraper):
-        return {"error": "Scrapers not available", "success": False}
+    """Search for jobs using the available scrapers"""
+    if not enhanced_scraper and not api_scraper:
+        return {"error": "No scrapers available", "success": False}
     
     try:
         # Extract search parameters
@@ -167,7 +158,6 @@ async def search_jobs(search_params: dict):
         location = search_params.get("location", "")
         website = search_params.get("website", "linkedin")
         job_limit = search_params.get("jobLimit", 25)
-        distance = search_params.get("distance", "25")
         
         if not keywords or not location:
             return {
@@ -175,71 +165,25 @@ async def search_jobs(search_params: dict):
                 "success": False
             }
         
-        # Convert datePosted to days
-        date_posted = search_params.get("datePosted", "any")
-        date_posted_days = None
-        if date_posted != "any":
-            # Map frontend date options to days
-            date_mapping = {
-                "past_24_hours": 1,
-                "past_week": 7,
-                "past_month": 30
-            }
-            date_posted_days = date_mapping.get(date_posted, 7)
+        # Prepare search parameters for scraper
+        scraper_params = {
+            "keywords": keywords,
+            "location": location,
+            "job_limit": job_limit,
+            "date_posted": search_params.get("datePosted", "any"),
+            "experience_level": search_params.get("experienceLevel", []),
+            "work_arrangement": search_params.get("workArrangement", []),
+            "job_type": search_params.get("jobType", [])
+        }
         
-        # Check if advanced filters are applied
-        work_arrangement = search_params.get("workArrangement", [])
-        experience_level = search_params.get("experienceLevel", [])
-        job_type = search_params.get("jobType", [])
+        # Choose the appropriate scraper based on search complexity
+        selected_scraper, strategy_method = choose_scraper(search_params)
         
-        # Determine search strategy based on filters
-        search_parameters = SearchParameters(
-            keywords=[keywords] if isinstance(keywords, str) else keywords,
-            location=location,
-            distance=distance,
-            date_posted_days=date_posted_days,
-            work_arrangement=work_arrangement[0] if work_arrangement else None,
-            experience_level=experience_level[0] if experience_level else None,
-            job_type=job_type[0] if job_type else None
-        )
+        if not selected_scraper:
+            return {"error": "No scraper available", "success": False}
         
-        # Get strategy info
-        strategy_info = strategy_manager.get_search_strategy_info(search_parameters)
-        search_method = strategy_manager.get_search_method(search_parameters)
-        
-        print(f"🔍 Search Strategy: {strategy_info['method']} for '{keywords}' in '{location}'")
-        print(f"📊 Strategy reason: {strategy_info['reason']}")
-        
-        # Select appropriate scraper
-        if search_method == SearchMethod.API_ONLY and api_scraper:
-            print("⚡ Using Fast API Scraper (no CAPTCHA risk)")
-            selected_scraper = api_scraper
-            
-            # Prepare search parameters for API scraper
-            scraper_params = [keywords] if isinstance(keywords, str) else keywords
-            jobs_result = selected_scraper.scrape_jobs(
-                keywords=scraper_params,
-                location=location,
-                distance=distance
-            )
-        else:
-            print("🌐 Using Enhanced WebDriver Scraper (handles advanced filters)")
-            if not enhanced_scraper:
-                return {"error": "Enhanced scraper not available for advanced filtering", "success": False}
-            
-            selected_scraper = enhanced_scraper
-            
-            # Prepare search parameters for enhanced scraper
-            scraper_params = {
-                "keywords": keywords,
-                "location": location,
-                "job_limit": job_limit,
-                "date_posted": search_params.get("datePosted", "any"),
-                "experience_level": search_params.get("experienceLevel", []),
-                "work_arrangement": search_params.get("workArrangement", []),
-                "job_type": search_params.get("jobType", [])
-            }
-            jobs_result = selected_scraper.scrape_jobs(scraper_params)
+        print(f"🔍 Searching for jobs: {keywords} in {location} using {strategy_method}")
+        jobs_result = selected_scraper.scrape_jobs(scraper_params)
         
         if not jobs_result or not jobs_result.success:
             return {
@@ -259,15 +203,15 @@ async def search_jobs(search_params: dict):
                 "job_title": job.title,
                 "company": job.company,
                 "location": job.location,
-                "job_url": job.linkedin_url or job.application_url or "",
+                "job_url": job.linkedin_url or job.indeed_url or job.glassdoor_url,
                 "score": score,
                 "reasoning": f"Found {job.title} position at {job.company}",
                 "key_skills": [],  # Could be extracted from description
                 "strengths": ["Position matches search criteria"],
                 "concerns": [],
-                "required_experience": job.experience_level.value if job.experience_level else "Not specified",
-                "education_requirements": "Not specified",  # This info is usually in requirements list
-                "date_posted": job.posted_date.isoformat() if job.posted_date else None,
+                "required_experience": job.experience_required or "Not specified",
+                "education_requirements": job.education_required or "Not specified",
+                "date_posted": job.date_posted.isoformat() if job.date_posted else None,
                 "salary_range": f"${job.salary_min:,} - ${job.salary_max:,}" if job.salary_min and job.salary_max else "Not specified"
             })
         
@@ -277,11 +221,10 @@ async def search_jobs(search_params: dict):
             "total_jobs": len(results),
             "results": results,
             "strategy_info": {
-                "method": strategy_info["method"],
-                "estimated_time": strategy_info["estimated_time"],
-                "performance_impact": strategy_info["performance_impact"],
-                "reason": strategy_info["reason"],
-                "applied_filters": strategy_info["applied_filters"]
+                "method": "LinkedIn Scraper",
+                "estimated_time": "10-30 seconds",
+                "performance_impact": "Medium",
+                "reason": "Using enhanced LinkedIn scraper with session management"
             }
         }
         
