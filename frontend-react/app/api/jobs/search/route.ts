@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // URL of your Render-deployed scraping service
-    const SCRAPING_SERVICE_URL = process.env.SCRAPING_SERVICE_URL || 'http://localhost:8000'
+    const SCRAPING_SERVICE_URL = process.env.SCRAPING_SERVICE_URL || 'https://jobos-1.onrender.com'
     
     console.log(`🔗 Attempting to connect to scraping service: ${SCRAPING_SERVICE_URL}/api/jobs/search`)
     console.log('📋 Request payload:', JSON.stringify(body, null, 2))
