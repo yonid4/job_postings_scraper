@@ -38,28 +38,46 @@ api_scraper = None
 
 try:
     if LinkedInScraperEnhanced and ScrapingConfig:
-        config = ScrapingConfig()
-        enhanced_scraper = LinkedInScraperEnhanced(config)
+        enhanced_config = ScrapingConfig(
+            site_name="linkedin",
+            base_url="https://www.linkedin.com"
+        )
+        enhanced_scraper = LinkedInScraperEnhanced(enhanced_config)
     
     if LinkedInAPIScraper and ScrapingConfig:
-        config = ScrapingConfig()
-        api_scraper = LinkedInAPIScraper(config)
+        api_config = ScrapingConfig(
+            site_name="linkedin",
+            base_url="https://www.linkedin.com"
+        )
+        api_scraper = LinkedInAPIScraper(api_config)
 except Exception as e:
     print(f"Warning: Could not initialize scrapers: {e}")
 
 def choose_scraper(search_params):
     """Choose between API and Enhanced scraper based on search complexity"""
-    has_advanced_filters = (
+    
+    # Only use enhanced scraper for filters that truly require CAPTCHA/authentication
+    # Basic filters (keywords, location, distance) should use API scraper
+    needs_enhanced_scraper = (
         search_params.get("datePosted", "any") != "any" or
-        search_params.get("experienceLevel", []) or
-        search_params.get("workArrangement", []) or
-        search_params.get("jobType", [])
+        (search_params.get("experienceLevel", []) and len(search_params.get("experienceLevel", [])) > 0) or
+        (search_params.get("workArrangement", []) and len(search_params.get("workArrangement", [])) > 0) or
+        (search_params.get("jobType", []) and len(search_params.get("jobType", [])) > 0)
     )
     
-    if has_advanced_filters and enhanced_scraper:
+    # For basic searches (keywords + location + distance), always prefer API scraper
+    has_only_basic_filters = (
+        search_params.get("keywords") and 
+        search_params.get("location") and
+        not needs_enhanced_scraper
+    )
+    
+    if has_only_basic_filters and api_scraper:
+        return api_scraper, "Fast API Mode"
+    elif needs_enhanced_scraper and enhanced_scraper:
         return enhanced_scraper, "WebDriver Mode"
     elif api_scraper:
-        return api_scraper, "Fast API Mode"
+        return api_scraper, "Fast API Mode"  # Fallback to API scraper
     else:
         return None, "No scraper available"
 
@@ -183,14 +201,42 @@ async def search_jobs(search_params: dict):
             return {"error": "No scraper available", "success": False}
         
         print(f"🔍 Searching for jobs: {keywords} in {location} using {strategy_method}")
-        jobs_result = selected_scraper.scrape_jobs(scraper_params)
+        
+        # Convert keywords string to list for scraper
+        keywords_list = [keywords] if isinstance(keywords, str) else keywords
+        
+        # Call scraper with correct method signature
+        jobs_result = selected_scraper.scrape_jobs(
+            keywords=keywords_list,
+            location=location,
+            job_limit=job_limit,
+            date_posted=search_params.get("datePosted", "any"),
+            experience_level=search_params.get("experienceLevel", []),
+            work_arrangement=search_params.get("workArrangement", []),
+            job_type=search_params.get("jobType", [])
+        )
         
         if not jobs_result or not jobs_result.success:
-            return {
-                "error": jobs_result.error_message if jobs_result else "Scraping failed",
-                "success": False,
-                "requires_manual_intervention": True
+            error_message = jobs_result.error_message if jobs_result else "Scraping failed"
+            
+            # Only set requires_manual_intervention for actual CAPTCHA/rate limiting issues
+            # Don't set it for simple API failures or "no results found" scenarios
+            requires_intervention = (
+                "captcha" in error_message.lower() or 
+                "rate limit" in error_message.lower() or
+                "blocked" in error_message.lower() or
+                "verification" in error_message.lower()
+            )
+            
+            response = {
+                "error": error_message,
+                "success": False
             }
+            
+            if requires_intervention:
+                response["requires_manual_intervention"] = True
+                
+            return response
         
         # Convert JobListing objects to the expected format
         results = []

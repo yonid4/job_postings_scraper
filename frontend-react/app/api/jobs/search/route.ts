@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     // URL of your Render-deployed scraping service
     const SCRAPING_SERVICE_URL = process.env.SCRAPING_SERVICE_URL || 'http://localhost:8000'
     
-    const response = await fetch(`${SCRAPING_SERVICE_URL}/jobs/search`, {
+    const response = await fetch(`${SCRAPING_SERVICE_URL}/api/jobs/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
